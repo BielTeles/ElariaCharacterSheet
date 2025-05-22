@@ -43,7 +43,6 @@ class CombatTab:
         self.load_data_from_personagem() 
 
     def load_data_from_personagem(self):
-        # ... (código de carregar stats e equipamento como antes) ...
         self.rd_total_var.set(str(self.personagem.rd_total))
         self.esquiva_val_var.set(str(self.personagem.pericias_valores.get("Esquiva", "0")))
         self.bloqueio_val_var.set(str(self.personagem.pericias_valores.get("Bloqueio", "0")))
@@ -63,15 +62,15 @@ class CombatTab:
         self.weapon_current_row_idx = 1 
 
         if hasattr(self.personagem, 'armas_inventario'):
-            for weapon_data_dict in self.personagem.armas_inventario:
-                # Garante que o nome da chave para o tipo da arma corresponde ao parâmetro da função
-                # Se o JSON salva como 'type', mas a função espera 'type_w', precisamos mapear.
-                # Vamos padronizar para 'type_w' na função e nos dicionários de dados.
-                # Se o JSON tiver 'type', renomeamos aqui antes de passar:
-                if 'type' in weapon_data_dict and 'type_w' not in weapon_data_dict:
-                    weapon_data_dict['type_w'] = weapon_data_dict.pop('type')
+            for weapon_data_dict_from_load in self.personagem.armas_inventario:
+                # Mapeamento de chaves antigas (do JSON) para novas (parâmetros da função)
+                params_for_add_row = weapon_data_dict_from_load.copy() # Evita modificar o dict original
+                if 'type' in params_for_add_row and 'type_w' not in params_for_add_row: # Mapeia 'type' para 'type_w'
+                    params_for_add_row['type_w'] = params_for_add_row.pop('type')
+                if 'range' in params_for_add_row and 'range_w' not in params_for_add_row: # Mapeia 'range' para 'range_w'
+                    params_for_add_row['range_w'] = params_for_add_row.pop('range')
                 
-                self.add_weapon_entry_row(**weapon_data_dict, is_loading=True)
+                self.add_weapon_entry_row(**params_for_add_row, is_loading=True)
         
         self._update_equipped_weapon_display("main", self.personagem.arma_equipada_principal)
         self._update_equipped_weapon_display("off", self.personagem.arma_equipada_secundaria)
@@ -83,6 +82,7 @@ class CombatTab:
         try: value = int(val_str) if val_str.strip() else 0
         except ValueError: string_var.set(str(self.personagem.pericias_valores.get(skill_name,0))); return
         self.personagem.atualizar_pericia_valor(skill_name, value)
+
 
     def _update_personagem_combat_attr(self, attr_keys, string_var, is_int=False, *args):
         # ... (como antes)
@@ -102,6 +102,7 @@ class CombatTab:
             if isinstance(obj_ref, dict): obj_ref[attr_keys[-1]] = value_to_set
             else: setattr(obj_ref, attr_keys[-1], value_to_set)
         except Exception as e: print(f"Erro ao atualizar {'.'.join(attr_keys)}: {e}")
+
 
     def create_linked_entry(self, parent, row, col, label_text, string_var, attr_keys_in_personagem=None, skill_name_in_personagem=None, is_int=False, placeholder="0", width=80, label_sticky="w", entry_sticky="ew"):
         # ... (como antes)
@@ -175,7 +176,6 @@ class CombatTab:
         self.action_roll_animation_label = ctk.CTkLabel(master=equipped_frame, text="", width=100, font=ctk.CTkFont(size=20, weight="bold")); self.action_roll_animation_label.grid(row=3, column=1, pady=(10, 2), sticky="w")
         self.action_roll_result_label = ctk.CTkLabel(master=equipped_frame, text="", width=450, anchor="w", justify="left", wraplength=440); self.action_roll_result_label.grid(row=3, column=2, columnspan=5, pady=(10, 2), sticky="ew")
 
-
     def setup_weapons_list_section(self):
         # ... (como antes)
         weapons_main_frame = ctk.CTkFrame(self.main_frame)
@@ -192,27 +192,26 @@ class CombatTab:
         add_weapon_button = ctk.CTkButton(master=weapons_main_frame, text="Adicionar Arma ao Inventário", command=lambda: self.add_weapon_entry_row())
         add_weapon_button.pack(pady=5)
 
-    # MUDANÇA AQUI: O nome do parâmetro para tipo da arma é 'type_w'
-    def add_weapon_entry_row(self, name="", damage_dice="", atk_attr="FOR", attack_skill_type="Corpo-a-Corpo", type_w="", hands="1", range_w="Corpo", is_loading=False):
+    # MODIFICADO para usar 'type_w' e 'range_w' como chaves no dict e parâmetros
+    def add_weapon_entry_row(self, name="", damage_dice="", atk_attr="FOR", 
+                             attack_skill_type="Corpo-a-Corpo", type_w="", # <--- MUDADO AQUI
+                             hands="1", range_w="", is_loading=False):      # <--- MUDADO AQUI
         weapon_data_dict = None
         if is_loading:
-            # Ao carregar, os dados já são do personagem.
-            # A referência weapon_data_dict será o dicionário da lista self.personagem.armas_inventario
-            # Para encontrar o dict correto, podemos precisar de um ID único por arma no futuro,
-            # mas por agora, vamos assumir que os dados passados são a referência correta.
-            # A forma como load_data_from_personagem chama (iterando sobre self.personagem.armas_inventario)
-            # garante que estamos usando o dicionário de dados correto do personagem.
-            weapon_data_dict = {'name': name, 'damage_dice': damage_dice, 'atk_attr': atk_attr, 
-                                'attack_skill_type': attack_skill_type, 'type_w': type_w, # <--- Usa type_w
-                                'hands': str(hands), 'range': range_w}
+            weapon_data_dict = {
+                'name': name, 'damage_dice': damage_dice, 'atk_attr': atk_attr, 
+                'attack_skill_type': attack_skill_type, 'type_w': type_w, # <--- USA type_w
+                'hands': str(hands), 'range_w': range_w # <--- USA range_w
+            }
+            # Não adiciona a self.personagem.armas_inventario aqui, pois já está lá
         else: 
-            weapon_data_dict = {'name': "", 'damage_dice': "", 'atk_attr': "FOR", 
-                                'attack_skill_type': "Corpo-a-Corpo", 'type_w': "", # <--- Usa type_w
-                                'hands': "1", 'range': "Corpo"}
-            # Adiciona este novo dicionário à lista do personagem.
-            # A UI irá atualizá-lo através dos traces.
-            self.personagem.armas_inventario.append(weapon_data_dict)
-
+            weapon_data_dict = {
+                'name': "", 'damage_dice': "", 'atk_attr': "FOR", 
+                'attack_skill_type': "Corpo-a-Corpo", 'type_w': "", # <--- USA type_w
+                'hands': "1", 'range_w': "" # <--- USA range_w
+            }
+            # Será adicionado em _on_weapon_data_change quando o nome for preenchido
+        
         row_frame = ctk.CTkFrame(self.weapons_scroll_frame, fg_color="transparent")
         row_frame.grid(row=self.weapon_current_row_idx, column=0, columnspan=9, sticky="ew", pady=(0, 1))
         col_weights = [3, 2, 1, 2, 2, 0, 1, 0, 0]
@@ -220,22 +219,25 @@ class CombatTab:
 
         ui_elements_for_row = {'frame': row_frame, 'data_dict_ref': weapon_data_dict}
 
-        # Campos de entrada com StringVars ligadas ao weapon_data_dict
+        # Nome
         name_var = ctk.StringVar(value=weapon_data_dict['name'])
         name_entry = ctk.CTkEntry(master=row_frame, placeholder_text="Nome", textvariable=name_var)
         name_entry.grid(row=0, column=0, padx=1, pady=1, sticky="ew")
         name_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='name', v=name_var: self._on_weapon_data_change(d,k,v))
         
+        # Dano
         damage_var = ctk.StringVar(value=weapon_data_dict['damage_dice'])
         damage_entry = ctk.CTkEntry(master=row_frame, placeholder_text="Ex: 1d8+2", textvariable=damage_var)
         damage_entry.grid(row=0, column=1, padx=1, pady=1, sticky="ew")
         damage_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='damage_dice', v=damage_var: self._on_weapon_data_change(d,k,v))
 
+        # Atributo de Ataque (Vantagem)
         atk_attr_var = ctk.StringVar(value=weapon_data_dict['atk_attr'])
         atk_attr_entry = ctk.CTkEntry(master=row_frame, placeholder_text="FOR/DES/etc.", textvariable=atk_attr_var)
         atk_attr_entry.grid(row=0, column=2, padx=1, pady=1, sticky="ew")
         atk_attr_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='atk_attr', v=atk_attr_var: self._on_weapon_data_change(d,k,v))
 
+        # Perícia de Ataque (Dropdown)
         attack_skill_options = ["Corpo-a-Corpo", "Pontaria", "Elemental"]
         attack_skill_var = ctk.StringVar(value=weapon_data_dict['attack_skill_type'])
         attack_skill_menu = ctk.CTkOptionMenu(master=row_frame, values=attack_skill_options, variable=attack_skill_var, width=140)
@@ -243,22 +245,24 @@ class CombatTab:
         attack_skill_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='attack_skill_type', v=attack_skill_var: self._on_weapon_data_change(d,k,v))
         ui_elements_for_row['attack_skill_type_var'] = attack_skill_var
 
-        # USA type_w PARA O DICIONÁRIO INTERNO E A STRINGVAR
-        type_w_var = ctk.StringVar(value=weapon_data_dict['type_w']) # <--- type_w
+        # Tipo da Arma (usa type_w)
+        type_w_var = ctk.StringVar(value=weapon_data_dict['type_w'])
         type_entry = ctk.CTkEntry(master=row_frame, placeholder_text="Corte, etc.", textvariable=type_w_var)
         type_entry.grid(row=0, column=4, padx=1, pady=1, sticky="ew")
-        type_w_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='type_w', v=type_w_var: self._on_weapon_data_change(d,k,v)) # <--- k='type_w'
+        type_w_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='type_w', v=type_w_var: self._on_weapon_data_change(d,k,v))
         
+        # Mãos
         hands_var = ctk.StringVar(value=str(weapon_data_dict['hands']))
         hands_menu = ctk.CTkOptionMenu(master=row_frame, values=["1", "2"], variable=hands_var, width=60)
         hands_menu.grid(row=0, column=5, padx=1, pady=1, sticky="w")
         hands_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='hands', v=hands_var: self._on_weapon_data_change(d,k,v))
         ui_elements_for_row['hands_var'] = hands_var
 
-        range_var = ctk.StringVar(value=weapon_data_dict['range'])
-        range_entry = ctk.CTkEntry(master=row_frame, placeholder_text="Corpo, Dist.", textvariable=range_var)
+        # Alcance (usa range_w)
+        range_w_var = ctk.StringVar(value=weapon_data_dict['range_w'])
+        range_entry = ctk.CTkEntry(master=row_frame, placeholder_text="Corpo, Dist.", textvariable=range_w_var)
         range_entry.grid(row=0, column=6, padx=1, pady=1, sticky="ew")
-        range_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='range', v=range_var: self._on_weapon_data_change(d,k,v))
+        range_w_var.trace_add("write", lambda n,i,m, d=weapon_data_dict, k='range_w', v=range_w_var: self._on_weapon_data_change(d,k,v))
         
         equip_button = ctk.CTkButton(master=row_frame, text="Equipar", width=70, command=lambda w_data=weapon_data_dict: self.equip_weapon(w_data))
         equip_button.grid(row=0, column=7, padx=1, pady=1)
@@ -271,25 +275,28 @@ class CombatTab:
         self.weapon_current_row_idx += 1
 
     def _on_weapon_data_change(self, weapon_data_dict_ref, key, string_var, *args):
+        # ... (como antes)
         new_value = string_var.get()
+        is_newly_named = False
+        if key == 'name' and new_value.strip() and weapon_data_dict_ref.get('name', '').strip() == "" :
+            is_newly_named = True
         weapon_data_dict_ref[key] = new_value
-        # Se a arma equipada for esta, atualiza o display da arma equipada também
+        if is_newly_named and weapon_data_dict_ref not in self.personagem.armas_inventario:
+            self.personagem.armas_inventario.append(weapon_data_dict_ref)
         if self.personagem.arma_equipada_principal == weapon_data_dict_ref:
             self._update_equipped_weapon_display("main", self.personagem.arma_equipada_principal)
         if self.personagem.arma_equipada_secundaria == weapon_data_dict_ref:
             self._update_equipped_weapon_display("off", self.personagem.arma_equipada_secundaria)
 
-    # --- O restante dos métodos (remove_weapon_row, equip_weapon, unequip_weapon, _update_equipped_weapon_display,
-    # update_all_inventory_equip_button_states, perform_unequip_action_from_data, perform_attack_roll,
-    # roll_equipped_weapon_damage, re_enable_action_buttons, animate_action_roll, is_weapon_equipped_in_other_slot)
-    # permanecem como na ÚLTIMA VERSÃO COMPLETA fornecida, pois a lógica principal deles
-    # já estava interagindo com os dados do personagem para armas equipadas e usando os valores corretos
-    # para as rolagens. A principal mudança foi garantir que a lista de armas do inventário
-    # e suas edições atualizem diretamente self.personagem.armas_inventario e que o load_data_from_personagem
-    # reconstrua a UI a partir dessa lista.
-    # Vou colar eles abaixo para garantir que você tenha o arquivo completo.
+    # --- O RESTANTE DOS MÉTODOS (remove_weapon_row, equip_weapon, etc.) ---
+    # Permanece igual à última versão completa que forneci, pois já estavam
+    # interagindo com self.personagem.arma_equipada_principal/secundaria
+    # e a lógica de rolagens e atualização de botões estava correta.
+    # A chave era garantir que add_weapon_entry_row e load_data_from_personagem
+    # usem as chaves de dicionário corretas e atualizem self.personagem.armas_inventario.
 
     def remove_weapon_row(self, row_frame_to_remove, weapon_data_to_remove):
+        # ... (código completo como na última resposta)
         row_frame_to_remove.destroy()
         ui_element_to_remove = next((el for el in self.weapon_inventory_ui_rows if el.get('frame') == row_frame_to_remove), None)
         if ui_element_to_remove: self.weapon_inventory_ui_rows.remove(ui_element_to_remove)
@@ -300,6 +307,7 @@ class CombatTab:
         self.update_all_inventory_equip_button_states()
         
     def equip_weapon(self, weapon_data_dict):
+        # ... (código completo como na última resposta)
         weapon_hands = str(weapon_data_dict.get('hands', "1"))
         if weapon_hands == "2":
             self.unequip_weapon("main", update_buttons=False) 
@@ -318,6 +326,7 @@ class CombatTab:
         self.update_all_inventory_equip_button_states()
 
     def unequip_weapon(self, hand_slot, update_buttons=True):
+        # ... (código completo como na última resposta)
         is_main_two_handed = False
         if hand_slot == "main" and self.personagem.arma_equipada_principal:
             if str(self.personagem.arma_equipada_principal.get('hands', "1")) == "2": is_main_two_handed = True
@@ -330,6 +339,7 @@ class CombatTab:
         if update_buttons: self.update_all_inventory_equip_button_states()
 
     def _update_equipped_weapon_display(self, hand_slot, weapon_data_dict):
+        # ... (código completo como na última resposta)
         name_label = self.mh_name_label if hand_slot == "main" else self.oh_name_label
         damage_label = self.mh_damage_label if hand_slot == "main" else self.oh_damage_label
         attack_button = self.mh_roll_attack_button if hand_slot == "main" else self.oh_roll_attack_button
@@ -346,6 +356,7 @@ class CombatTab:
             attack_button.configure(state="disabled"); damage_button.configure(state="disabled")
 
     def update_all_inventory_equip_button_states(self):
+        # ... (código completo como na última resposta)
         for weapon_ui_el_dict in self.weapon_inventory_ui_rows:
             button = weapon_ui_el_dict.get('equip_button')
             weapon_data_ref = weapon_ui_el_dict.get('data_dict_ref')
@@ -366,10 +377,12 @@ class CombatTab:
             else: button.configure(state="normal")
 
     def perform_unequip_action_from_data(self, weapon_data_to_unequip):
+        # ... (código completo como na última resposta)
         if self.personagem.arma_equipada_principal == weapon_data_to_unequip: self.unequip_weapon("main")
         elif self.personagem.arma_equipada_secundaria == weapon_data_to_unequip: self.unequip_weapon("off")
 
     def perform_attack_roll(self, hand_slot):
+        # ... (código completo como na última resposta)
         weapon_data = None
         if hand_slot == "main": weapon_data = self.personagem.arma_equipada_principal
         elif hand_slot == "off": weapon_data = self.personagem.arma_equipada_secundaria
@@ -397,6 +410,7 @@ class CombatTab:
         else: self.action_roll_result_label.configure(text="Nenhuma arma para atacar."); self.re_enable_action_buttons()
 
     def roll_equipped_weapon_damage(self, hand_slot):
+        # ... (código completo como na última resposta)
         weapon_data = None; modifier_entry_widget = None
         if hand_slot == "main": weapon_data = self.personagem.arma_equipada_principal; modifier_entry_widget = self.mh_damage_mod_entry
         elif hand_slot == "off": weapon_data = self.personagem.arma_equipada_secundaria; modifier_entry_widget = self.oh_damage_mod_entry
@@ -417,6 +431,7 @@ class CombatTab:
         else: self.action_roll_result_label.configure(text="Nenhuma arma para rolar dano."); self.re_enable_action_buttons()
             
     def re_enable_action_buttons(self):
+        # ... (código completo como na última resposta)
         if self.mh_roll_attack_button and self.personagem.arma_equipada_principal: self.mh_roll_attack_button.configure(state="normal")
         if self.mh_roll_damage_button and self.personagem.arma_equipada_principal: self.mh_roll_damage_button.configure(state="normal")
         if self.oh_roll_attack_button and self.personagem.arma_equipada_secundaria: self.oh_roll_attack_button.configure(state="normal")
@@ -426,6 +441,7 @@ class CombatTab:
             if self.oh_roll_damage_button: self.oh_roll_damage_button.configure(state="disabled")
 
     def animate_action_roll(self, step, roll_type, value1, value2, item_name_for_display, hand_slot_rolled):
+        # ... (código completo como na última resposta)
         animation_steps = 8; animation_interval = 60
         if step < animation_steps:
             temp_roll_display = random.randint(1, 20 if roll_type == "attack" else 10) 
