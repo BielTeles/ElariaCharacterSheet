@@ -160,6 +160,101 @@ def roll_generic_dice(num_dice, dice_type):
         rolls.append(roll)
         total_sum += roll
     return rolls, total_sum
+  
+def parse_and_roll_damage_string(damage_string, static_modifier=0):
+    """
+    Interpreta uma string de dano (ex: "1d8", "2d6+2", "1d4-1") e rola os dados.
+
+    Args:
+        damage_string (str): A string representando o dano (ex: "2d6+3").
+        static_modifier (int): Um modificador estático adicional a ser somado ao total.
+
+    Returns:
+        tuple: (list_of_rolls, total_sum_before_additional_mod, final_sum_with_all_mods)
+               Retorna ([], 0, 0) se a string de dano for inválida.
+    """
+    if not isinstance(damage_string, str) or not damage_string:
+        return [], 0, 0
+
+    original_string = damage_string # Para referência em caso de erro
+    num_dice_str = ""
+    dice_type_str = ""
+    base_modifier_str = ""
+    
+    has_dice_sep = 'd' in damage_string.lower()
+    
+    if has_dice_sep:
+        parts = damage_string.lower().split('d')
+        num_dice_str = parts[0].strip()
+        
+        # Encontrar o final do tipo de dado e o início do modificador base
+        rest_of_string = parts[1]
+        modifier_sep_plus = rest_of_string.find('+')
+        modifier_sep_minus = rest_of_string.find('-')
+
+        if modifier_sep_plus != -1 and (modifier_sep_minus == -1 or modifier_sep_plus < modifier_sep_minus):
+            dice_type_str = rest_of_string[:modifier_sep_plus].strip()
+            base_modifier_str = rest_of_string[modifier_sep_plus:].strip()
+        elif modifier_sep_minus != -1 and (modifier_sep_plus == -1 or modifier_sep_minus < modifier_sep_plus):
+            dice_type_str = rest_of_string[:modifier_sep_minus].strip()
+            base_modifier_str = rest_of_string[modifier_sep_minus:].strip()
+        else:
+            dice_type_str = rest_of_string.strip()
+            base_modifier_str = "" # Nenhum modificador base na string
+    else:
+        # Caso a string seja apenas um número (dano fixo, sem dados)
+        if damage_string.lstrip('-+').isdigit():
+            num_dice_str = "0" # Sem dados para rolar
+            dice_type_str = "0" # Sem tipo de dado
+            base_modifier_str = damage_string.strip()
+        else:
+            print(f"Erro: String de dano '{original_string}' inválida (formato esperado 'XdY+Z', 'XdY-Z', 'XdY' ou 'N').")
+            return [], 0, 0
+
+
+    try:
+        num_dice = int(num_dice_str) if num_dice_str else 1 # Se XdY, X é 1 se omitido (ex: "d6")
+        if not num_dice_str and has_dice_sep: # caso como "d6"
+            num_dice = 1
+        elif not num_dice_str and not has_dice_sep: # caso como "+5"
+             num_dice = 0
+
+
+        dice_type = int(dice_type_str) if dice_type_str else 0 # Se não houver 'd', não há tipo de dado.
+        base_modifier = int(base_modifier_str) if base_modifier_str else 0
+    except ValueError:
+        print(f"Erro: Não foi possível converter partes da string de dano '{original_string}' para números.")
+        return [], 0, 0
+
+    rolls = []
+    sum_of_rolls = 0
+
+    if num_dice > 0 and dice_type > 0:
+        for _ in range(num_dice):
+            roll = random.randint(1, dice_type)
+            rolls.append(roll)
+            sum_of_rolls += roll
+    elif num_dice == 0 and dice_type == 0 and base_modifier_str: # Dano fixo, ex: "5" ou "+5"
+        pass # sum_of_rolls já é 0, o modificador base será adicionado
+    elif num_dice > 0 and dice_type == 0 : # Ex: "2d" ou "2d0" - inválido
+        print(f"Erro: Tipo de dado inválido na string '{original_string}'.")
+        return [],0,0
+    # Outros casos inválidos são pegos pela conversão para int ou estrutura da string
+
+    total_before_additional_mod = sum_of_rolls + base_modifier
+    final_sum_with_all_mods = total_before_additional_mod + static_modifier
+    
+    # Garante que o dano final não seja negativo, a menos que o jogo permita.
+    # Por padrão, vamos definir o mínimo como 0 ou 1 se houve rolagem.
+    if final_sum_with_all_mods < 0 and (num_dice > 0 or base_modifier != 0 or static_modifier != 0):
+        final_sum_with_all_mods = 0 
+    elif final_sum_with_all_mods == 0 and (num_dice > 0 or base_modifier != 0 or static_modifier != 0) : # se o resultado for 0 mas dados foram rolados
+        if num_dice > 0: # Se dados foram rolados, o dano mínimo geralmente é 1, a menos que modificadores negativos o zerem
+            final_sum_with_all_mods = max(0, final_sum_with_all_mods) # Deixa 0 se os modificadores zerarem, ou 1 se for 1d4-3 por ex e der 1.
+                                                                 # Regra comum: dano mínimo 1 se acertar. O livro não especifica. Ajustar se necessário.
+
+
+    return rolls, total_before_additional_mod, final_sum_with_all_mods
 
 # --- Testes Simples (para rodar diretamente este arquivo) ---
 if __name__ == "__main__":
@@ -215,3 +310,32 @@ if __name__ == "__main__":
             print(f"Rolando {n_dice}d{d_type}: Rolagens={rolls}, Soma={total}")
         else:
             print(f"Tentativa de rolar {n_dice}d{d_type}: Input inválido.")
+
+    print("\n--- Teste de Parse e Rolagem de Dano (parse_and_roll_damage_string) ---")
+    damage_tests = [
+        ("1d8", 0),
+        ("2d6+2", 0),
+        ("1d4-1", 0),
+        ("d10", 0),       # 1d10
+        ("3d4", 2),       # 3d4 + 2 (modificador estático)
+        ("1d12+1", -1),   # 1d12 + 1 - 1
+        ("10", 0),        # Dano fixo
+        ("+5", 2),        # Dano fixo + modificador estático
+        ("-3", 1),        # Dano fixo + modificador estático
+        ("d6+1",0),
+        ("2d10-3", 1),
+        ("abc", 0),       # Inválido
+        ("1d", 0),        # Inválido
+        ("d",0),          # Inválido
+        ("2d6+",0)        # Inválido
+    ]
+    for dmg_str, mod in damage_tests:
+        rolls, total_base, final_total = parse_and_roll_damage_string(dmg_str, mod)
+        if rolls or (not rolls and (total_base != 0 or final_total !=0) and dmg_str.lstrip('-+').isdigit()): # Se houve rolagens ou é dano fixo válido
+            print(f"Dano: '{dmg_str}' + Modificador Estático: {mod} -> Rolagens: {rolls}, Total Base: {total_base}, Total Final: {final_total}")
+        elif not rolls and total_base == 0 and final_total == 0 and not dmg_str.lstrip('-+').isdigit() and 'd' not in dmg_str: # String inválida não numérica e sem 'd'
+             pass # Já impresso pela função
+        elif not dmg_str.lstrip('-+').isdigit() and 'd' not in dmg_str:
+            pass # erro já tratado
+        elif not rolls and total_base == 0 and final_total == 0 :
+             pass # Erro já tratado
