@@ -9,29 +9,41 @@ from ui.tab_inventory import InventoryTab
 from ui.tab_notes import NotesTab
 from ui.tab_dice_roller_generic import DiceRollerGenericTab
 
+SUBCLASS_OPTIONS = {
+    "Evocador": ["", "Caminho da Terra", "Caminho da Água", "Caminho do Ar", "Caminho do Fogo", "Caminho da Luz", "Caminho da Sombra"],
+    "Titã": ["", "Arquétipo do Baluarte", "Arquétipo da Fúria Primal", "Arquétipo do Quebra-Montanhas"],
+    "Sentinela": ["", "Arquétipo do Rastreador dos Ermos", "Arquétipo da Lâmina do Crepúsculo", "Arquétipo do Olho Vigilante"],
+    "Elo": ["", "Arquétipo da Voz da Harmonia", "Arquétipo do Porta-Voz da Chama", "Arquétipo do Guardião do Coração"],
+    "": [""] 
+}
+for class_name_key in SUBCLASS_OPTIONS: # Renomeado para evitar conflito
+    if SUBCLASS_OPTIONS[class_name_key] and SUBCLASS_OPTIONS[class_name_key][0] != "":
+        SUBCLASS_OPTIONS[class_name_key].insert(0, "")
+
+
 class AppUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Ficha de Personagem Elaria RPG")
-        self.root.geometry("850x700")
-
+        self.root.geometry("1280x720")
         self.personagem_atual = Personagem()
-
         self.main_frame = ctk.CTkFrame(self.root)
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
         self.file_ops_frame = ctk.CTkFrame(self.main_frame)
         self.file_ops_frame.pack(fill="x", pady=(0, 10))
-
         self.save_button = ctk.CTkButton(self.file_ops_frame, text="Salvar Ficha", command=self.salvar_ficha)
         self.save_button.pack(side="left", padx=10, pady=5)
-
         self.load_button = ctk.CTkButton(self.file_ops_frame, text="Carregar Ficha", command=self.carregar_ficha)
         self.load_button.pack(side="left", padx=10, pady=5)
+        
+        # NOVO: Botão Nova Ficha e Label de Feedback
+        self.new_char_button = ctk.CTkButton(self.file_ops_frame, text="Nova Ficha", command=self.nova_ficha)
+        self.new_char_button.pack(side="left", padx=10, pady=5)
+        self.feedback_label = ctk.CTkLabel(self.file_ops_frame, text="")
+        self.feedback_label.pack(side="left", padx=10, pady=5)
 
         self.tab_view = ctk.CTkTabview(self.main_frame)
         self.tab_view.pack(fill="both", expand=True)
-
         self.tab_principal_widget = self.tab_view.add("Principal")
         self.tab_attrs_skills_widget = self.tab_view.add("Atributos & Perícias")
         self.tab_combat_widget = self.tab_view.add("Combate")
@@ -39,15 +51,11 @@ class AppUI:
         self.tab_inventario_widget = self.tab_view.add("Inventário")
         self.tab_rolador_widget = self.tab_view.add("Rolador de Dados")
         self.tab_notas_widget = self.tab_view.add("Notas")
-
         self.tab_view.set("Principal")
 
         self.principal_stringvars = {}
-        self.principal_entries = {}
-        # O setup_principal_tab agora é chamado dentro de atualizar_ui_completa pela primeira vez
-        # ou podemos chamá-lo aqui para configurar os widgets inicialmente, e atualizar_ui_completa
-        # apenas setaria os valores das StringVars. Vamos configurar aqui.
-        self.setup_principal_tab_widgets(self.tab_principal_widget) # Apenas configura widgets
+        self.principal_widgets = {} 
+        self.setup_principal_tab_widgets(self.tab_principal_widget)
         
         self.attributes_skills_tab = AttributesSkillsTab(self.tab_attrs_skills_widget, self.personagem_atual)
         self.combat_tab = CombatTab(self.tab_combat_widget, self.attributes_skills_tab, self.personagem_atual)
@@ -55,46 +63,118 @@ class AppUI:
         self.inventory_tab = InventoryTab(self.tab_inventario_widget, self.personagem_atual)
         self.dice_roller_generic_tab = DiceRollerGenericTab(self.tab_rolador_widget)
         self.notes_tab = NotesTab(self.tab_notas_widget, self.personagem_atual)
+        self.atualizar_ui_completa() 
 
-        self.atualizar_ui_completa() # Carrega dados iniciais do personagem padrão na UI
+    def show_feedback_message(self, message, duration=3000):
+        """Mostra uma mensagem de feedback e a apaga após 'duration' ms."""
+        self.feedback_label.configure(text=message)
+        self.root.after(duration, lambda: self.feedback_label.configure(text=""))
 
-    def _update_personagem_attr(self, personagem_obj, attr_name, string_var, *args): # Adicionado *args
-        # Se o último argumento for 'ui_reload_skip_personagem_update', não atualiza o objeto personagem.
+    def nova_ficha(self):
+        # TODO: Adicionar um CTkDialog para confirmação seria bom
+        # print("Criando nova ficha...")
+        self.personagem_atual = Personagem() # Cria nova instância
+        self.atualizar_ui_completa()       # Atualiza toda a UI
+        self.show_feedback_message("Nova ficha limpa carregada.", 2000)
+
+
+    def _update_personagem_attr(self, personagem_obj, attr_name, string_var, *args):
+        # ... (lógica como antes, mas a atualização do nível via +/- botões não passará por aqui diretamente)
         if args and args[-1] == "ui_reload_skip_personagem_update":
             return
 
         new_value_str = string_var.get()
-        current_value_in_obj = getattr(personagem_obj, attr_name, "")
-
-        if attr_name == "nivel":
+        valor_mudou = False
+        
+        # Se o atributo for 'nivel' e o widget for um Entry, a trace ainda funciona.
+        # Se for o label do Nível, esta função não será chamada pelo trace do label.
+        # Os botões +/- chamarão _adjust_nivel diretamente.
+        if attr_name == "nivel" and isinstance(self.principal_widgets.get("nivel"), ctk.CTkEntry): # Checa se é entry
             try:
-                new_value_int = int(new_value_str)
+                new_value_int = int(new_value_str);
+                if new_value_int < 1: new_value_int = 1
                 if personagem_obj.nivel != new_value_int:
-                    setattr(personagem_obj, attr_name, new_value_int)
-                    # print(f"Personagem.{attr_name} atualizado para: {new_value_int}")
-            except ValueError:
-                string_var.set(str(current_value_in_obj)) # Reverte na UI
-                # print(f"Aviso: Nível '{new_value_str}' não é um inteiro válido. Mantido: {current_value_in_obj}")
-        else:
-            if str(current_value_in_obj) != new_value_str:
-                setattr(personagem_obj, attr_name, new_value_str)
-                # print(f"Personagem.{attr_name} atualizado para: {new_value_str}")
+                    personagem_obj.atualizar_nivel(str(new_value_int)); valor_mudou = True
+            except ValueError: string_var.set(str(personagem_obj.nivel)); return
+        elif attr_name == "classe_principal":
+            if personagem_obj.classe_principal != new_value_str:
+                personagem_obj.atualizar_classe_principal(new_value_str); valor_mudou = True
+                self._update_subclass_options(new_value_str)
+        elif attr_name == "raca":
+            if personagem_obj.raca != new_value_str:
+                personagem_obj.atualizar_raca(new_value_str); valor_mudou = True
+        else: 
+            if str(getattr(personagem_obj, attr_name, "")) != new_value_str:
+                setattr(personagem_obj, attr_name, new_value_str); valor_mudou = True
+        
+        if valor_mudou and attr_name in ["nivel", "classe_principal", "raca"]:
+            if hasattr(self, 'attributes_skills_tab') and self.attributes_skills_tab:
+                self.attributes_skills_tab.atualizar_display_maximos()
+                
+    def _update_subclass_options(self, selected_main_class):
+        # ... (como antes)
+        subclass_widget = self.principal_widgets.get("sub_classe")
+        subclass_var = self.principal_stringvars.get("sub_classe")
+        if isinstance(subclass_widget, ctk.CTkOptionMenu) and subclass_var:
+            new_options = SUBCLASS_OPTIONS.get(selected_main_class, [""]) 
+            if not new_options : new_options = [""] 
+            current_subclass_on_object = self.personagem_atual.sub_classe
+            subclass_widget.configure(values=new_options)
+            if current_subclass_on_object in new_options: subclass_var.set(current_subclass_on_object)
+            else: subclass_var.set(new_options[0]) 
+            # O trace na subclass_var atualizará o objeto personagem se o valor mudar
 
-    def setup_principal_tab_widgets(self, tab_widget): # Renomeado, apenas configura os widgets
+    def _adjust_nivel(self, amount):
+        """Ajusta o nível do personagem e atualiza a UI."""
+        try:
+            current_level = int(self.principal_stringvars["nivel"].get())
+            new_level = current_level + amount
+            if new_level < 1: # Nível mínimo 1
+                new_level = 1
+            
+            # Atualiza a StringVar, que por sua vez chamará _update_personagem_attr
+            # (se o widget do nível ainda for um Entry com trace)
+            # ou atualiza diretamente o personagem e depois a stringvar do label.
+            self.principal_stringvars["nivel"].set(str(new_level))
+            
+            # Se o widget do nível for apenas um Label, precisamos garantir que _update_personagem_attr
+            # seja chamado ou que o personagem seja atualizado diretamente aqui.
+            # Como _update_personagem_attr para "nivel" é chamado pela trace da StringVar:
+            # A linha acima (setando a stringvar) já deve ser suficiente.
+            # O método atualizar_nivel no Personagem será chamado pelo trace,
+            # e ele chamará recalcular_maximos.
+            # Então, a attributes_skills_tab.atualizar_display_maximos() será chamada
+            # dentro do _update_personagem_attr se 'nivel' mudar.
+
+        except ValueError:
+            self.principal_stringvars["nivel"].set(str(self.personagem_atual.nivel)) # Reverte se valor inválido
+
+    def setup_principal_tab_widgets(self, tab_widget):
         content_frame = ctk.CTkFrame(tab_widget)
         content_frame.pack(fill="both", expand=True, padx=10, pady=10)
         content_frame.columnconfigure(0, weight=1); content_frame.columnconfigure(1, weight=2)
         content_frame.columnconfigure(2, weight=1); content_frame.columnconfigure(3, weight=2)
         
+        racas_opcoes = ["", "Alari", "Roknar", "Kain", "Faelan", "Celeres", "Aurien", "Vesperi"]
+        classes_opcoes = ["", "Evocador", "Titã", "Sentinela", "Elo"]
+        origens_opcoes = ["", "Sobrevivente do Círculo de Brasas", "Guarda de Harmonia", "Iniciado das Florestas", "Erudito da Grande Biblioteca", "Artista Itinerante", "Veterano das Guerras"]
+        divindades_opcoes = ["", "Ignis", "Ondina", "Terrus", "Zephyrus", "Lumina", "Noctus", "Nenhum"]
+        initial_subclass_options = SUBCLASS_OPTIONS.get(self.personagem_atual.classe_principal, [""])
+
         fields_data = [
-            ("Nome do Personagem:", "nome_personagem"), ("Nome do Jogador:", "nome_jogador"),
-            ("Raça:", "raca"), ("Classe Principal:", "classe_principal"),
-            ("Sub-classe:", "sub_classe"), ("Nível:", "nivel"),
-            ("Origem:", "origem"), ("Divindade/Patrono:", "divindade_patrono"),
-            ("Tendência (Alinhamento):", "tendencia"),]
+            ("Nome do Personagem:", "nome_personagem", "entry", []),
+            ("Nome do Jogador:", "nome_jogador", "entry", []),
+            ("Raça:", "raca", "option", racas_opcoes),
+            ("Classe Principal:", "classe_principal", "option", classes_opcoes),
+            ("Sub-classe:", "sub_classe", "option", initial_subclass_options),
+            ("Nível:", "nivel", "level_adjust", []), # NOVO TIPO DE WIDGET
+            ("Origem:", "origem", "option", origens_opcoes),
+            ("Divindade/Patrono:", "divindade_patrono", "option", divindades_opcoes),
+            ("Tendência (Alinhamento):", "tendencia", "entry", []),
+        ]
         
         row_count_col1 = 0; row_count_col2 = 0
-        for i, (label_text, attr_name) in enumerate(fields_data):
+        for i, (label_text, attr_name, widget_type, options) in enumerate(fields_data):
             target_column_label_idx = 0; target_column_entry_idx = 1; current_row_for_field = 0
             if i % 2 == 0: row_count_col1 += 1; current_row_for_field = row_count_col1
             else: target_column_label_idx = 2; target_column_entry_idx = 3; row_count_col2 += 1; current_row_for_field = row_count_col2
@@ -102,99 +182,95 @@ class AppUI:
             label = ctk.CTkLabel(master=content_frame, text=label_text, anchor="e")
             label.grid(row=current_row_for_field, column=target_column_label_idx, padx=(10,5), pady=5, sticky="e")
             
-            var = ctk.StringVar() # O valor será setado por atualizar_ui_completa
-            var.trace_add("write", lambda n, idx, m, p=self.personagem_atual, atr=attr_name, v=var: self._update_personagem_attr(p, atr, v))
+            var = ctk.StringVar()
+            # Configura trace apenas se não for o widget customizado de nível (que tem seus próprios botões)
+            if widget_type != "level_adjust":
+                if attr_name == "classe_principal":
+                    var.trace_add("write", lambda n_trace, idx_trace, m_trace, p=self.personagem_atual, atr=attr_name, v_s=var: 
+                                  (self._update_personagem_attr(p, atr, v_s), self._update_subclass_options(v_s.get())))
+                else:
+                    var.trace_add("write", lambda n_trace, idx_trace, m_trace, p=self.personagem_atual, atr=attr_name, v_s=var: self._update_personagem_attr(p, atr, v_s))
             self.principal_stringvars[attr_name] = var
             
-            entry = ctk.CTkEntry(master=content_frame, placeholder_text=label_text.replace(":", ""), textvariable=var)
-            entry.grid(row=current_row_for_field, column=target_column_entry_idx, padx=(0,10), pady=5, sticky="ew")
-            self.principal_entries[attr_name] = entry
+            widget_container = content_frame # Onde o widget principal será colocado
+            target_col_for_widget = target_column_entry_idx
+
+            if widget_type == "entry":
+                widget = ctk.CTkEntry(master=widget_container, placeholder_text=label_text.replace(":", ""), textvariable=var)
+            elif widget_type == "option":
+                widget = ctk.CTkOptionMenu(master=widget_container, values=options, variable=var, dynamic_resizing=False)
+            elif widget_type == "level_adjust":
+                # Frame para agrupar label de nível e botões +/-
+                level_frame = ctk.CTkFrame(master=widget_container, fg_color="transparent")
+                
+                minus_button = ctk.CTkButton(master=level_frame, text="-", width=28, height=28, command=lambda: self._adjust_nivel(-1))
+                minus_button.pack(side="left", padx=(0,2))
+                
+                # Usaremos um Label para exibir o nível, sua StringVar será atualizada pelos botões
+                level_display_label = ctk.CTkLabel(master=level_frame, textvariable=var, width=40, height=28)
+                level_display_label.pack(side="left", padx=2)
+                self.principal_widgets[attr_name + "_label"] = level_display_label # Guarda o label
+
+                plus_button = ctk.CTkButton(master=level_frame, text="+", width=28, height=28, command=lambda: self._adjust_nivel(1))
+                plus_button.pack(side="left", padx=(2,0))
+                
+                widget = level_frame # O "widget" principal para este campo é o frame
+            
+            if widget:
+                widget.grid(row=current_row_for_field, column=target_col_for_widget, padx=(0,10), pady=5, sticky="ew")
+                self.principal_widgets[attr_name] = widget 
             
     def salvar_ficha(self):
-        filepath = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            filetypes=[("JSON Files", "*.json"), ("Todos os Arquivos", "*.*")],
-            title="Salvar Ficha de Personagem Elaria"
-        )
-        if not filepath:
-            print("Salvar cancelado.")
-            return
+        # ... (como antes)
+        filepath = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON Files", "*.json"), ("Todos os Arquivos", "*.*")], title="Salvar Ficha de Personagem Elaria")
+        if not filepath: self.show_feedback_message("Salvar cancelado.", 2000); return
         try:
-            # Garante que os dados das StringVars que não usam _update_personagem_attr (se houver)
-            # são coletados antes de salvar. No nosso caso, _update_personagem_attr é chamado pelos traces.
             char_data = self.personagem_atual.to_dict()
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(char_data, f, ensure_ascii=False, indent=4)
-            print(f"Ficha salva com sucesso em: {filepath}")
-        except Exception as e:
-            print(f"Erro ao salvar ficha: {e}")
+            with open(filepath, 'w', encoding='utf-8') as f: json.dump(char_data, f, ensure_ascii=False, indent=4)
+            self.show_feedback_message(f"Ficha salva: {filepath.split('/')[-1]}", 3000)
+        except Exception as e: self.show_feedback_message(f"Erro ao salvar: {e}", 4000); print(f"Erro ao salvar ficha: {e}")
+
 
     def carregar_ficha(self):
-        filepath = filedialog.askopenfilename(
-            filetypes=[("JSON Files", "*.json"), ("Todos os Arquivos", "*.*")],
-            title="Carregar Ficha de Personagem Elaria"
-        )
-        if not filepath:
-            print("Carregar cancelado.")
-            return
+        # ... (como antes)
+        filepath = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json"), ("Todos os Arquivos", "*.*")], title="Carregar Ficha de Personagem Elaria")
+        if not filepath: self.show_feedback_message("Carregar cancelado.", 2000); return
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                char_data = json.load(f)
-            
-            # Cria uma NOVA instância de Personagem a partir dos dados carregados
+            with open(filepath, 'r', encoding='utf-8') as f: char_data = json.load(f)
             self.personagem_atual = Personagem.from_dict(char_data) 
-            print(f"Ficha carregada de: {filepath}. Personagem: {self.personagem_atual.nome_personagem}")
-            
-            # Atualizar toda a UI para refletir o novo self.personagem_atual
             self.atualizar_ui_completa()
+            self.show_feedback_message(f"Ficha carregada: {filepath.split('/')[-1]}", 3000)
+        except Exception as e: self.show_feedback_message(f"Erro ao carregar: {e}", 4000); print(f"Erro ao carregar ficha: {e}")
 
-        except Exception as e:
-            print(f"Erro ao carregar ficha: {e}")
 
     def atualizar_ui_completa(self):
-        """Atualiza todos os campos da UI com os dados do self.personagem_atual."""
+        # ... (como antes)
         print("Atualizando UI completa com dados do personagem...")
-        
-        # Aba Principal - Atualiza as StringVars, que atualizam os Entries
-        if hasattr(self, 'principal_stringvars'): # Verifica se já foi inicializado
+        if hasattr(self, 'principal_stringvars'): 
+            loaded_main_class = getattr(self.personagem_atual, "classe_principal", "")
+            self._update_subclass_options(loaded_main_class) 
             for attr_name, string_var in self.principal_stringvars.items():
                 new_val = str(getattr(self.personagem_atual, attr_name, ""))
-                # Para evitar loop de trace desnecessário, podemos desabilitar e reabilitar o trace
-                # ou, mais simples, a lógica em _update_personagem_attr deve impedir a reescrita se o valor for o mesmo.
-                # A forma mais segura é setar o valor da stringvar sem que ela dispare o callback de escrita no objeto.
-                # No entanto, o trace "write" é para quando a UI muda o valor. Aqui, estamos mudando o valor da UI.
-                # Se _update_personagem_attr for idempotente ou verificar se o valor realmente mudou, está OK.
-                string_var.set(new_val)
-
-
-        # Aba Atributos & Perícias
+                widget_ref = self.principal_widgets.get(attr_name)
+                if isinstance(widget_ref, ctk.CTkOptionMenu):
+                    current_options = widget_ref.cget("values")
+                    if new_val in current_options: string_var.set(new_val)
+                    elif current_options: string_var.set(current_options[0]); setattr(self.personagem_atual, attr_name, current_options[0])
+                    else: string_var.set("")
+                elif attr_name == "nivel" and isinstance(widget_ref, ctk.CTkFrame): # Para o widget de nível customizado
+                    string_var.set(new_val) # Apenas seta a StringVar, o label já está ligado a ela
+                else: string_var.set(new_val) # Para CTkEntry
         if hasattr(self, 'attributes_skills_tab') and self.attributes_skills_tab:
-            self.attributes_skills_tab.personagem = self.personagem_atual # Garante que a aba usa o personagem carregado
-            self.attributes_skills_tab.load_data_from_personagem() 
-
-        # Aba Combate
+            self.attributes_skills_tab.personagem = self.personagem_atual; self.attributes_skills_tab.load_data_from_personagem() 
         if hasattr(self, 'combat_tab') and self.combat_tab:
-            self.combat_tab.personagem = self.personagem_atual
-            self.combat_tab.load_data_from_personagem()
-
-        # Aba Magia
+            self.combat_tab.personagem = self.personagem_atual; self.combat_tab.load_data_from_personagem()
         if hasattr(self, 'magic_tab') and self.magic_tab:
-            self.magic_tab.personagem = self.personagem_atual
-            self.magic_tab.load_data_from_personagem()
-        
-        # Aba Inventário
+            self.magic_tab.personagem = self.personagem_atual; self.magic_tab.load_data_from_personagem()
         if hasattr(self, 'inventory_tab') and self.inventory_tab:
-            self.inventory_tab.personagem = self.personagem_atual
-            self.inventory_tab.load_data_from_personagem()
-
-        # Aba Notas
+            self.inventory_tab.personagem = self.personagem_atual; self.inventory_tab.load_data_from_personagem()
         if hasattr(self, 'notes_tab') and self.notes_tab:
             self.notes_tab.personagem = self.personagem_atual
-            # NotesTab agora deve ter seu próprio load_data_from_personagem ou um método para setar o texto
-            if hasattr(self.notes_tab, 'load_data_from_personagem'):
-                 self.notes_tab.load_data_from_personagem()
-            elif hasattr(self.notes_tab, 'notes_textbox') and hasattr(self.personagem_atual, 'notas'): # Fallback
-                self.notes_tab.notes_textbox.delete("0.0", "end")
-                self.notes_tab.notes_textbox.insert("0.0", self.personagem_atual.notas if self.personagem_atual.notas else "")
-        
+            if hasattr(self.notes_tab, 'load_data_from_personagem'): self.notes_tab.load_data_from_personagem()
+            elif hasattr(self.notes_tab, 'notes_textbox') and hasattr(self.personagem_atual, 'notas'):
+                self.notes_tab.notes_textbox.delete("0.0", "end"); self.notes_tab.notes_textbox.insert("0.0", self.personagem_atual.notas if self.personagem_atual.notas else "")
         print("UI atualizada.")

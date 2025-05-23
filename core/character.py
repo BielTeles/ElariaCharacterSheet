@@ -3,11 +3,11 @@ import json
 
 class Personagem:
     def __init__(self):
-        # Aba Principal
+        # ... (atributos como definido anteriormente)
         self.nome_personagem = ""
         self.nome_jogador = ""
         self.raca = ""
-        self.classe_principal = "" # Ex: "Evocador", "Titã", "Sentinela", "Elo"
+        self.classe_principal = "" 
         self.sub_classe = ""
         self.nivel = 1 
         self.origem = ""
@@ -21,86 +21,94 @@ class Personagem:
         
         self._pv_maximo_base_calculado = 0 
         self._pm_maximo_base_calculado = 0 
-        self._vigor_maximo_calculado = 0 # NOVO para Vigor Máximo
+        self._vigor_maximo_calculado = 0
 
         self.pv_atuais = 0
         self.pm_atuais = 0
-        self.vigor_atuais = 0 # Já existia
+        self.vigor_atuais = 0
         
         self.pericias_valores = {}
         self.pericias_treinadas = set() 
 
         self.rd_total = 0
-        self.armadura_equipada = {"nome": "", "rd_fornecida": 0}
-        self.escudo_equipado = {"nome": "", "notas": ""}
+        self.armadura_equipada = {"nome": "", "rd_fornecida": 0} # Dicionário simples
+        self.escudo_equipado = {"nome": "", "notas": ""}       # Dicionário simples
         
-        self.armas_inventario = [] 
-        self.arma_equipada_principal = None 
-        self.arma_equipada_secundaria = None 
+        self.armas_inventario = [] # Deve ser uma lista de dicionários
+        self.arma_equipada_principal = None # Deve ser um dicionário (ou referência a um da lista) ou None
+        self.arma_equipada_secundaria = None # Deve ser um dicionário (ou referência a um da lista) ou None
 
         self.atributo_chave_magia = "" 
         self.cd_teste_resistencia_magia = 0
-        self.bonus_ataque_magico = 0 
+        self.bonus_ataque_magico = "0" # Mantido como string para consistência com UI, mas int seria melhor
         self.caminho_especializacao_magica = ""
-        self.magias_habilidades = [] 
+        self.magias_habilidades = [] # Deve ser uma lista de dicionários
 
         self.moedas_ef = 0
         self.moedas_efp = 0
-        self.itens_gerais = [] 
+        self.itens_gerais = [] # Deve ser uma lista de dicionários
         self.limite_carga_status = "Normal"
         self.notas = ""
 
-        self.recalcular_maximos()
+        self.recalcular_maximos() # Chamado no final do init
 
     @property
     def pv_maximo(self):
+        # ... (lógica como antes)
         bonus_racial_pv = 0
         if self.raca == "Roknar":
             bonus_racial_pv = 3 + (max(0, self.nivel -1) * 1)
         return self._pv_maximo_base_calculado + bonus_racial_pv
 
+
     @property
     def pm_maximo(self):
+        # ... (lógica como antes)
         bonus_racial_pm = 0
         if self.raca == "Alari":
-            bonus_racial_pm = self.nivel * 1
+            bonus_racial_pm = self.nivel * 1 # Assegure que self.nivel é int aqui
         return self._pm_maximo_base_calculado + bonus_racial_pm
 
-    @property # NOVO Property para Vigor Máximo
+    @property 
     def vigor_maximo(self):
-        # Não há bônus raciais especificados para vigor máximo, apenas o cálculo da classe Titã.
-        # Se outras classes ou raças concederem bônus, adicionar aqui.
+        # ... (lógica como antes)
         return self._vigor_maximo_calculado
 
 
     def recalcular_maximos(self):
-        """Recalcula PV, PM e Vigor máximos e atualiza os atuais se necessário."""
+        # ... (lógica como antes)
+        # Garanta que self.nivel e os valores em self.atributos são inteiros antes de usar em cálculos
         con = self.atributos.get("Constituição", 0)
-        nivel_atual = self.nivel if isinstance(self.nivel, int) and self.nivel > 0 else 1
+        try:
+            nivel_atual = int(self.nivel)
+            if nivel_atual < 1: nivel_atual = 1
+        except (ValueError, TypeError):
+            nivel_atual = 1 # Padrão se nível for inválido
 
-        # --- Cálculo de PV Máximo Base ---
+        # PV
         pv_inicial_classe = 0; pv_por_nivel_classe = 0
-        if self.classe_principal == "Evocador":
-            pv_inicial_classe = 8 + con; pv_por_nivel_classe = 4 + con
-        elif self.classe_principal == "Titã":
-            pv_inicial_classe = 12 + con; pv_por_nivel_classe = 6 + con
-        elif self.classe_principal == "Sentinela":
-            pv_inicial_classe = 8 + con; pv_por_nivel_classe = 4 + con
-        elif self.classe_principal == "Elo":
-            pv_inicial_classe = 8 + con; pv_por_nivel_classe = 2 + con
+        if self.classe_principal == "Evocador": pv_inicial_classe = 8 + con; pv_por_nivel_classe = 4 + con
+        elif self.classe_principal == "Titã": pv_inicial_classe = 12 + con; pv_por_nivel_classe = 6 + con
+        elif self.classe_principal == "Sentinela": pv_inicial_classe = 8 + con; pv_por_nivel_classe = 4 + con
+        elif self.classe_principal == "Elo": pv_inicial_classe = 8 + con; pv_por_nivel_classe = 2 + con
         else: pv_inicial_classe = 6 + con; pv_por_nivel_classe = 3 + con
-
         if nivel_atual == 1: self._pv_maximo_base_calculado = pv_inicial_classe
         else: self._pv_maximo_base_calculado = pv_inicial_classe + ((nivel_atual - 1) * pv_por_nivel_classe)
         
-        if self.pv_atuais > self.pv_maximo or (self.pv_atuais == 0 and self.pv_maximo > 0) :
-            self.pv_atuais = self.pv_maximo
+        # Ajusta PV atuais
+        # Usa a property pv_maximo que já inclui bônus racial
+        if self.pv_atuais > self.pv_maximo or (getattr(self, '_pv_maximo_base_calculado', 0) > 0 and self.pv_atuais == 0 and self.pv_maximo > 0 and not hasattr(self, '_loaded_once')): # Enche na primeira vez ou se aumentou
+             self.pv_atuais = self.pv_maximo
+        elif self.pv_atuais > self.pv_maximo:
+             self.pv_atuais = self.pv_maximo
 
-        # --- Cálculo de PM Máximo Base ---
+
+        # PM
         pm_inicial_classe = 0; pm_por_nivel_classe = 0; atributo_chave_pm_valor = 0
+        # ... (lógica de PM como antes) ...
         if self.classe_principal == "Evocador":
-            if self.atributo_chave_magia in self.atributos:
-                atributo_chave_pm_valor = self.atributos.get(self.atributo_chave_magia, 0)
+            atr_chave = self.atributo_chave_magia if self.atributo_chave_magia else "Sabedoria" # Default para Evocador se não definido
+            atributo_chave_pm_valor = self.atributos.get(atr_chave, 0)
             pm_inicial_classe = 6 + atributo_chave_pm_valor; pm_por_nivel_classe = 4 + atributo_chave_pm_valor
         elif self.classe_principal == "Sentinela":
             atributo_chave_pm_valor = self.atributos.get("Sabedoria", 0)
@@ -109,28 +117,32 @@ class Personagem:
             atributo_chave_pm_valor = self.atributos.get("Carisma", 0)
             pm_inicial_classe = 6 + atributo_chave_pm_valor; pm_por_nivel_classe = 4 + atributo_chave_pm_valor
         
-        if pm_inicial_classe > 0: # Apenas calcula se a classe usa PM
+        if pm_inicial_classe > 0: 
             if nivel_atual == 1: self._pm_maximo_base_calculado = pm_inicial_classe
             else: self._pm_maximo_base_calculado = pm_inicial_classe + ((nivel_atual - 1) * pm_por_nivel_classe)
         else: self._pm_maximo_base_calculado = 0
-
-        if self.pm_atuais > self.pm_maximo or (self.pm_atuais == 0 and self.pm_maximo > 0):
+        
+        # Ajusta PM atuais
+        if self.pm_atuais > self.pm_maximo or (getattr(self, '_pm_maximo_base_calculado', 0) > 0 and self.pm_atuais == 0 and self.pm_maximo > 0 and not hasattr(self, '_loaded_once')):
             self.pm_atuais = self.pm_maximo
+        elif self.pm_atuais > self.pm_maximo:
+             self.pm_atuais = self.pm_maximo
 
-        # --- Cálculo de Vigor Máximo --- NOVO
-        self._vigor_maximo_calculado = 0 # Zera por padrão
-        if self.classe_principal == "Titã": # [cite: 362]
-            # Começa com um número de Vigor igual a 1 + Constituição. [cite: 363]
-            # O livro não especifica ganho de Vigor Máximo por nível.
+
+        # Vigor
+        self._vigor_maximo_calculado = 0 
+        if self.classe_principal == "Titã": 
             self._vigor_maximo_calculado = 1 + con 
         
-        if self.vigor_atuais > self.vigor_maximo or (self.vigor_atuais == 0 and self.vigor_maximo > 0):
+        # Ajusta Vigor atuais
+        if self.vigor_atuais > self.vigor_maximo or (getattr(self, '_vigor_maximo_calculado',0) > 0 and self.vigor_atuais == 0 and self.vigor_maximo > 0 and not hasattr(self, '_loaded_once')):
             self.vigor_atuais = self.vigor_maximo
-        
-        # print(f"Recalculado: PV Max: {self.pv_maximo}, PM Max: {self.pm_maximo}, Vigor Max: {self.vigor_maximo}")
+        elif self.vigor_atuais > self.vigor_maximo:
+            self.vigor_atuais = self.vigor_maximo
+
 
     def atualizar_atributo(self, nome_atributo, valor):
-        # ... (como antes, mas recalcular_maximos já é chamado)
+        # ... (como antes)
         if nome_atributo in self.atributos:
             try:
                 val_int = int(valor)
@@ -140,8 +152,9 @@ class Personagem:
             except ValueError: print(f"Erro: Valor '{valor}' inválido para atributo {nome_atributo}.")
         else: print(f"Erro: Atributo desconhecido '{nome_atributo}'.")
 
+
     def atualizar_nivel(self, novo_nivel_str):
-        # ... (como antes, mas recalcular_maximos já é chamado)
+        # ... (como antes)
         try:
             novo_nivel = int(novo_nivel_str)
             if novo_nivel < 1: novo_nivel = 1
@@ -150,24 +163,29 @@ class Personagem:
                 self.recalcular_maximos()
         except ValueError: print(f"Erro: Nível '{novo_nivel_str}' inválido.")
 
+
     def atualizar_classe_principal(self, nova_classe):
-        # ... (como antes, mas recalcular_maximos já é chamado)
+        # ... (como antes)
         if self.classe_principal != nova_classe:
             self.classe_principal = nova_classe
+            # Resetar atributo chave de magia se a classe não for Evocador, ou definir um padrão
+            if self.classe_principal != "Evocador":
+                self.atributo_chave_magia = "" # Ou um valor padrão para outras classes se aplicável
             self.recalcular_maximos()
             
     def atualizar_raca(self, nova_raca):
-        # ... (como antes, mas recalcular_maximos já é chamado)
+        # ... (como antes)
         if self.raca != nova_raca:
             self.raca = nova_raca
             self.recalcular_maximos()
 
     def atualizar_atributo_chave_magia(self, novo_atributo_chave):
-        # ... (como antes, mas recalcular_maximos já é chamado)
+        # ... (como antes)
         if self.atributo_chave_magia != novo_atributo_chave:
             self.atributo_chave_magia = novo_atributo_chave
-            if self.classe_principal == "Evocador":
+            if self.classe_principal == "Evocador": # Só recalcula se for Evocador
                 self.recalcular_maximos()
+
 
     def atualizar_pericia_valor(self, nome_pericia, valor):
         # ... (como antes)
@@ -177,64 +195,37 @@ class Personagem:
                  self.pericias_valores[nome_pericia] = val_int
         except ValueError: print(f"Erro: Valor '{valor}' inválido para perícia {nome_pericia}.")
 
+
     def marcar_pericia_treinada(self, nome_pericia, eh_treinada):
         # ... (como antes)
         if eh_treinada: self.pericias_treinadas.add(nome_pericia)
         else: self.pericias_treinadas.discard(nome_pericia)
 
+
     def to_dict(self):
+        # ... (como antes)
         data = self.__dict__.copy()
         if 'pericias_treinadas' in data and isinstance(data['pericias_treinadas'], set):
             data['pericias_treinadas'] = list(data['pericias_treinadas'])
-        data.pop('_pv_maximo_base_calculado', None)
-        data.pop('_pm_maximo_base_calculado', None)
-        data.pop('_vigor_maximo_calculado', None) # NOVO: Remove o calculado
+        data.pop('_pv_maximo_base_calculado', None); data.pop('_pm_maximo_base_calculado', None); data.pop('_vigor_maximo_calculado', None)
         return data
 
     @classmethod
     def from_dict(cls, data_dict):
         personagem = cls()
+        # Limpa listas que serão repopuladas para evitar duplicação se from_dict for chamado em uma instância existente
+        personagem.armas_inventario = []
+        personagem.magias_habilidades = []
+        personagem.itens_gerais = []
+        
         for key, value in data_dict.items():
             if hasattr(personagem, key):
                 if key == 'pericias_treinadas' and isinstance(value, list):
                     setattr(personagem, key, set(value))
-                # Não seta diretamente os máximos, serão recalculados.
-                # Assegure-se que pv_atuais, pm_atuais, vigor_atuais são carregados.
-                elif key not in ['pv_maximo', 'pm_maximo', 'vigor_maximo', 
-                                 '_pv_maximo_base_calculado', '_pm_maximo_base_calculado', '_vigor_maximo_calculado']:
+                elif key not in ['pv_maximo', 'pm_maximo', 'vigor_maximo', '_pv_maximo_base_calculado', '_pm_maximo_base_calculado', '_vigor_maximo_calculado']:
                     setattr(personagem, key, value)
         
-        personagem.recalcular_maximos() # Garante que máximos sejam calculados após carregar
-        # Ajusta os atuais para não excederem os máximos recém-calculados (já feito em recalcular_maximos)
+        personagem._loaded_once = True # Sinalizador para lógica de encher PV/PM/Vigor atuais
+        personagem.recalcular_maximos() 
+        delattr(personagem, '_loaded_once') # Remove o sinalizador
         return personagem
-
-
-if __name__ == "__main__":
-    char = Personagem()
-    char.nome_personagem = "Calculador Vigor"
-    char.classe_principal = "Titã" 
-    char.raca = "Roknar" 
-    char.nivel = 2
-    char.atributos["Constituição"] = 3 # Titã Vigor = 1+3 = 4
-
-    print(f"--- Teste {char.classe_principal} Nível {char.nivel} CON {char.atributos['Constituição']} Raça {char.raca} ---")
-    # recalcular_maximos() é chamado no __init__ e após mudanças relevantes
-    print(f"PV Máximo: {char.pv_maximo} (Base: {char._pv_maximo_base_calculado})")
-    print(f"PM Máximo: {char.pm_maximo} (Base: {char._pm_maximo_base_calculado})")
-    print(f"Vigor Máximo: {char.vigor_maximo} (Base: {char._vigor_maximo_calculado})")
-
-    char.nivel = 1
-    char.atualizar_nivel("1") # Testando atualização de nível
-    print(f"--- Teste Nível 1 ---")
-    print(f"PV Máximo: {char.pv_maximo} (Base: {char._pv_maximo_base_calculado})")
-    print(f"Vigor Máximo: {char.vigor_maximo} (Base: {char._vigor_maximo_calculado})")
-
-    # Teste de salvamento e carregamento
-    char_data = char.to_dict()
-    # print(json.dumps(char_data, indent=2))
-    new_char = Personagem.from_dict(char_data)
-    print(f"--- Personagem Carregado: {new_char.nome_personagem} ---")
-    print(f"PV Máximo Carregado: {new_char.pv_maximo}")
-    print(f"PM Máximo Carregado: {new_char.pm_maximo}")
-    print(f"Vigor Máximo Carregado: {new_char.vigor_maximo}")
-    print(f"Vigor Atuais Carregado: {new_char.vigor_atuais}") # Deve ser igual ao máximo após recalcular
