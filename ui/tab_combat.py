@@ -1,5 +1,5 @@
 import customtkinter as ctk
-import random
+import random # Mantido caso haja alguma lógica futura que o utilize indiretamente
 from core.dice_roller import (
     roll_generic_dice,
     parse_and_roll_damage_string,
@@ -50,10 +50,13 @@ class CombatTab:
         self.cac_val_var.set(str(self.personagem.pericias_valores.get("Corpo-a-Corpo", "0")))
         self.pontaria_val_var.set(str(self.personagem.pericias_valores.get("Pontaria", "0")))
         self.elemental_val_var.set(str(self.personagem.pericias_valores.get("Elemental", "0")))
+        
+        # Dados da armadura e escudo
         self.armor_name_var.set(self.personagem.armadura_equipada.get("nome", ""))
-        self.armor_rd_var.set(str(self.personagem.armadura_equipada.get("rd_fornecida", "0")))
+        self.armor_rd_var.set(str(self.personagem.armadura_equipada.get("rd_fornecida", "0"))) # Era 'rd_fornecida'
         self.shield_name_var.set(self.personagem.escudo_equipado.get("nome", ""))
         self.shield_notes_var.set(self.personagem.escudo_equipado.get("notas", ""))
+
 
         for row_ui_elements in self.weapon_inventory_ui_rows:
             if row_ui_elements.get('frame'):
@@ -63,26 +66,44 @@ class CombatTab:
 
         if hasattr(self.personagem, 'armas_inventario'):
             for weapon_data_from_inventory in self.personagem.armas_inventario:
-                # Correção de mapeamento de chaves ao carregar
                 params_for_add_row = weapon_data_from_inventory.copy()
+                
+                # --- CORREÇÃO AQUI ---
+                if 'nome' in params_for_add_row and 'name' not in params_for_add_row:
+                    params_for_add_row['name'] = params_for_add_row.pop('nome')
+                # --- FIM DA CORREÇÃO ---
+
                 if 'type' in params_for_add_row and 'type_w' not in params_for_add_row:
                     params_for_add_row['type_w'] = params_for_add_row.pop('type')
                 if 'range' in params_for_add_row and 'range_w' not in params_for_add_row:
                     params_for_add_row['range_w'] = params_for_add_row.pop('range')
+                
+                # Garantir que as chaves esperadas existam com valores padrão se não estiverem no dicionário
+                expected_keys_defaults = {
+                    "name": "", "damage_dice": "", "atk_attr": "FOR", 
+                    "attack_skill_type": "Corpo-a-Corpo", "type_w": "", 
+                    "hands": "1", "range_w": "Corpo"
+                }
+                for key, default_val in expected_keys_defaults.items():
+                    if key not in params_for_add_row:
+                        params_for_add_row[key] = default_val
+
                 self.add_weapon_entry_row(**params_for_add_row, is_loading=True)
         
         if self.personagem.arma_equipada_principal:
-            found_main = next((w for w in self.personagem.armas_inventario if w.get('name') == self.personagem.arma_equipada_principal.get('name')), None)
+            found_main = next((w for w in self.personagem.armas_inventario if w.get('name') == self.personagem.arma_equipada_principal.get('name')), None) # Deve ser 'name' aqui também
             if found_main: self.personagem.arma_equipada_principal = found_main
             else: self.personagem.arma_equipada_principal = None
         if self.personagem.arma_equipada_secundaria:
-            found_off = next((w for w in self.personagem.armas_inventario if w.get('name') == self.personagem.arma_equipada_secundaria.get('name')), None)
+            found_off = next((w for w in self.personagem.armas_inventario if w.get('name') == self.personagem.arma_equipada_secundaria.get('name')), None) # E aqui
             if found_off: self.personagem.arma_equipada_secundaria = found_off
             else: self.personagem.arma_equipada_secundaria = None
+            
         self._update_equipped_weapon_display("main", self.personagem.arma_equipada_principal)
         self._update_equipped_weapon_display("off", self.personagem.arma_equipada_secundaria)
         self.update_all_inventory_equip_button_states()
 
+    # ... (resto da classe CombatTab sem alterações) ...
     def _update_personagem_skill_value_from_combat_tab(self, skill_name, string_var, *args):
         val_str = string_var.get(); value = 0
         try: value = int(val_str) if val_str.strip() else 0
@@ -102,10 +123,11 @@ class CombatTab:
                 string_var.set(str(revert_val)); return
         obj_ref = self.personagem
         try:
-            for key in attr_keys[:-1]: obj_ref = getattr(obj_ref, key) if not isinstance(obj_ref, dict) else obj_val[key]
+            for key in attr_keys[:-1]: obj_ref = getattr(obj_ref, key) if not isinstance(obj_ref, dict) else obj_val[key] # Era obj_val aqui
             if isinstance(obj_ref, dict): obj_ref[attr_keys[-1]] = value_to_set
             else: setattr(obj_ref, attr_keys[-1], value_to_set)
         except Exception as e: print(f"Erro ao atualizar {'.'.join(attr_keys)}: {e}")
+
 
     def create_linked_entry(self, parent, row, col, label_text, string_var, attr_keys_in_personagem=None, skill_name_in_personagem=None, is_int=False, placeholder="0", width=80, label_sticky="w", entry_sticky="ew"):
         label = ctk.CTkLabel(master=parent, text=label_text); label.grid(row=row, column=col, padx=5, pady=2, sticky=label_sticky)
@@ -156,19 +178,17 @@ class CombatTab:
 
     def setup_weapons_list_section(self):
         weapons_main_frame = ctk.CTkFrame(self.main_frame)
-        weapons_main_frame.grid(row=3, column=0, columnspan=2, padx=5, pady=(5,0), sticky="nsew") # pady(5,0) para dar espaço antes do final da aba
-        
-        # --- MUDANÇA: Configurar grid para weapons_main_frame ---
-        weapons_main_frame.rowconfigure(0, weight=0)  # Título
-        weapons_main_frame.rowconfigure(1, weight=1)  # ScrollFrame (este é o que deve expandir)
-        weapons_main_frame.rowconfigure(2, weight=0)  # Botão Adicionar (fixo abaixo)
-        weapons_main_frame.columnconfigure(0, weight=1) # Coluna única para os elementos se alinharem
+        weapons_main_frame.grid(row=3, column=0, columnspan=2, padx=5, pady=(5,0), sticky="nsew") 
+        weapons_main_frame.rowconfigure(0, weight=0) 
+        weapons_main_frame.rowconfigure(1, weight=1)  
+        weapons_main_frame.rowconfigure(2, weight=0) 
+        weapons_main_frame.columnconfigure(0, weight=1)
 
         title_weapons_label = ctk.CTkLabel(master=weapons_main_frame, text="Inventário de Armas", font=ctk.CTkFont(size=16, weight="bold"))
-        title_weapons_label.grid(row=0, column=0, pady=(0,5), sticky="n") # Usando grid
+        title_weapons_label.grid(row=0, column=0, pady=(0,5), sticky="n")
 
-        self.weapons_scroll_frame = ctk.CTkScrollableFrame(weapons_main_frame, height=150) # Height é mais uma sugestão inicial
-        self.weapons_scroll_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew") # Usando grid, preenche e expande
+        self.weapons_scroll_frame = ctk.CTkScrollableFrame(weapons_main_frame, height=150) 
+        self.weapons_scroll_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 
         col_weights = [3, 2, 1, 2, 2, 0, 1, 0, 0]; 
         for i, weight in enumerate(col_weights): self.weapons_scroll_frame.columnconfigure(i, weight=weight)
@@ -179,11 +199,9 @@ class CombatTab:
         self.weapon_current_row_idx = 1
         
         add_weapon_button = ctk.CTkButton(master=weapons_main_frame, text="Adicionar Arma ao Inventário", command=lambda: self.add_weapon_entry_row())
-        add_weapon_button.grid(row=2, column=0, pady=(5,0), sticky="ew", padx=5) # Usando grid, centralizado/expandido
-    # --- FIM DA MUDANÇA ---
+        add_weapon_button.grid(row=2, column=0, pady=(5,0), sticky="ew", padx=5)
 
     def _on_weapon_data_change(self, weapon_data_dict_ref, key, string_var, *args):
-        # ... (como antes)
         new_value = string_var.get()
         is_newly_named = False
         if key == 'name' and new_value.strip() and weapon_data_dict_ref.get('name', '').strip() == "" :
@@ -196,22 +214,34 @@ class CombatTab:
         if self.personagem.arma_equipada_secundaria is weapon_data_dict_ref: 
             self._update_equipped_weapon_display("off", self.personagem.arma_equipada_secundaria)
 
-    def add_weapon_entry_row(self, existing_data_dict=None, is_loading=False, 
-                             name="", damage_dice="", atk_attr="FOR", 
-                             attack_skill_type="Corpo-a-Corpo", type_w="", 
-                             hands="1", range_w="Corpo"):
-        # ... (como antes)
-        weapon_data_for_this_row = None
-        if is_loading and existing_data_dict is not None: weapon_data_for_this_row = existing_data_dict 
-        else: 
-            weapon_data_for_this_row = {'name': name, 'damage_dice': damage_dice, 'atk_attr': atk_attr, 'attack_skill_type': attack_skill_type, 'type_w': type_w, 'hands': str(hands), 'range_w': range_w}
-            if name.strip():
-                 if weapon_data_for_this_row not in self.personagem.armas_inventario:
-                      self.personagem.armas_inventario.append(weapon_data_for_this_row)
+    def add_weapon_entry_row(self, is_loading=False, **weapon_kwargs): # Alterado para aceitar **kwargs
+        weapon_data_for_this_row = weapon_kwargs.copy() # Usa os kwargs diretamente
+        
+        # Definir padrões se não vierem nos kwargs (importante para novas linhas vazias)
+        defaults = {
+            "name": "", "damage_dice": "", "atk_attr": "FOR", 
+            "attack_skill_type": "Corpo-a-Corpo", "type_w": "", 
+            "hands": "1", "range_w": "Corpo"
+        }
+        for key, default_value in defaults.items():
+            if key not in weapon_data_for_this_row:
+                weapon_data_for_this_row[key] = default_value
+        
+        # Se não estiver carregando e o nome for preenchido, adiciona ao inventário do personagem
+        if not is_loading and weapon_data_for_this_row.get('name', "").strip(): # Para novas armas adicionadas pela UI
+            if weapon_data_for_this_row not in self.personagem.armas_inventario:
+                 self.personagem.armas_inventario.append(weapon_data_for_this_row)
+        elif is_loading and weapon_data_for_this_row not in self.personagem.armas_inventario:
+            # Durante o carregamento, as armas já devem estar em self.personagem.armas_inventario
+            # esta lógica pode ser redundante se load_data_from_personagem já popula self.personagem.armas_inventario
+            pass
+
+
         row_frame = ctk.CTkFrame(self.weapons_scroll_frame, fg_color="transparent"); row_frame.grid(row=self.weapon_current_row_idx, column=0, columnspan=9, sticky="ew", pady=(0, 1))
         col_weights = [3, 2, 1, 2, 2, 0, 1, 0, 0]; 
         for i, weight in enumerate(col_weights): row_frame.columnconfigure(i, weight=weight)
         ui_elements_for_row = {'frame': row_frame, 'data_dict_ref': weapon_data_for_this_row}
+        
         name_var = ctk.StringVar(value=weapon_data_for_this_row.get('name',"")); name_entry = ctk.CTkEntry(master=row_frame, placeholder_text="Nome", textvariable=name_var); name_entry.grid(row=0, column=0, padx=1, pady=1, sticky="ew"); name_var.trace_add("write", lambda n,i,m, d=weapon_data_for_this_row, k='name', v=name_var: self._on_weapon_data_change(d,k,v))
         damage_var = ctk.StringVar(value=weapon_data_for_this_row.get('damage_dice',"")); damage_entry = ctk.CTkEntry(master=row_frame, placeholder_text="Ex: 1d8+2", textvariable=damage_var); damage_entry.grid(row=0, column=1, padx=1, pady=1, sticky="ew"); damage_var.trace_add("write", lambda n,i,m, d=weapon_data_for_this_row, k='damage_dice', v=damage_var: self._on_weapon_data_change(d,k,v))
         atk_attr_var = ctk.StringVar(value=weapon_data_for_this_row.get('atk_attr',"FOR")); atk_attr_entry = ctk.CTkEntry(master=row_frame, placeholder_text="FOR/DES/etc.", textvariable=atk_attr_var); atk_attr_entry.grid(row=0, column=2, padx=1, pady=1, sticky="ew"); atk_attr_var.trace_add("write", lambda n,i,m, d=weapon_data_for_this_row, k='atk_attr', v=atk_attr_var: self._on_weapon_data_change(d,k,v))
@@ -221,16 +251,10 @@ class CombatTab:
         range_w_var = ctk.StringVar(value=weapon_data_for_this_row.get('range_w',"Corpo")); range_entry = ctk.CTkEntry(master=row_frame, placeholder_text="Corpo, Dist.", textvariable=range_w_var); range_entry.grid(row=0, column=6, padx=1, pady=1, sticky="ew"); range_w_var.trace_add("write", lambda n,i,m, d=weapon_data_for_this_row, k='range_w', v=range_w_var: self._on_weapon_data_change(d,k,v))
         equip_button = ctk.CTkButton(master=row_frame, text="Equipar", width=70, command=lambda w_data=weapon_data_for_this_row: self.equip_weapon(w_data)); equip_button.grid(row=0, column=7, padx=1, pady=1); ui_elements_for_row['equip_button'] = equip_button
         remove_button = ctk.CTkButton(master=row_frame, text="X", width=25, height=25, command=lambda rf=row_frame, rd=weapon_data_for_this_row: self.remove_weapon_row(rf, rd)); remove_button.grid(row=0, column=8, padx=1, pady=1, sticky="e")
-        self.weapon_inventory_ui_rows.append(ui_elements_for_row); self.weapon_current_row_idx += 1
+        
+        self.weapon_inventory_ui_rows.append(ui_elements_for_row)
+        self.weapon_current_row_idx += 1
     
-    # --- Copie todos os métodos restantes da CombatTab da ÚLTIMA RESPOSTA COMPLETA ---
-    # (remove_weapon_row, equip_weapon, unequip_weapon, _update_equipped_weapon_display,
-    # update_all_inventory_equip_button_states, perform_unequip_action_from_data,
-    # perform_attack_roll, roll_equipped_weapon_damage, re_enable_action_buttons,
-    # animate_action_roll, is_weapon_equipped_in_other_slot)
-    # Eles foram omitidos aqui para brevidade, mas devem ser incluídos para o código funcionar.
-    # Vou colar eles abaixo para garantir a integridade.
-
     def remove_weapon_row(self, row_frame_to_remove, weapon_data_to_remove):
         row_frame_to_remove.destroy()
         ui_element_to_remove = next((el for el in self.weapon_inventory_ui_rows if el.get('frame') == row_frame_to_remove), None)
@@ -254,7 +278,9 @@ class CombatTab:
             elif self.personagem.arma_equipada_secundaria is None and self.personagem.arma_equipada_principal != weapon_data_dict:
                 if self.personagem.arma_equipada_principal and str(self.personagem.arma_equipada_principal.get('hands',"1")) == "2": return 
                 self.personagem.arma_equipada_secundaria = weapon_data_dict
-            else: return 
+            else: # Se ambos os slots estiverem ocupados e a arma não for de 2 mãos, ou se tentar equipar a mesma arma
+                self.app_ui.show_feedback_message("Slots de arma ocupados ou arma já equipada.", 2500)
+                return 
         self._update_equipped_weapon_display("main", self.personagem.arma_equipada_principal)
         self._update_equipped_weapon_display("off", self.personagem.arma_equipada_secundaria)
         self.update_all_inventory_equip_button_states()
@@ -267,8 +293,10 @@ class CombatTab:
             if is_main_two_handed: self.personagem.arma_equipada_secundaria = None
         elif hand_slot == "off" and self.personagem.arma_equipada_secundaria:
             self.personagem.arma_equipada_secundaria = None
-        self._update_equipped_weapon_display(hand_slot, None)
-        if is_main_two_handed and hand_slot == "main": self._update_equipped_weapon_display("off", None)
+            
+        self._update_equipped_weapon_display("main", self.personagem.arma_equipada_principal) # Sempre atualiza main
+        self._update_equipped_weapon_display("off", self.personagem.arma_equipada_secundaria) # E off
+        
         if update_buttons: self.update_all_inventory_equip_button_states()
 
     def _update_equipped_weapon_display(self, hand_slot, weapon_data_dict):
@@ -276,36 +304,61 @@ class CombatTab:
         damage_label = self.mh_damage_label if hand_slot == "main" else self.oh_damage_label
         attack_button = self.mh_roll_attack_button if hand_slot == "main" else self.oh_roll_attack_button
         damage_button = self.mh_roll_damage_button if hand_slot == "main" else self.oh_roll_damage_button
+        
         if weapon_data_dict:
-            name_label.configure(text=weapon_data_dict.get('name', "N/A"))
+            name_label.configure(text=weapon_data_dict.get('name', "N/A")) # Usar 'name'
             damage_label.configure(text=f"Dano: {weapon_data_dict.get('damage_dice', 'N/A')}")
             attack_button.configure(state="normal"); damage_button.configure(state="normal")
+            
+            # Se a arma principal é de duas mãos, desabilita a secundária
             if hand_slot == "main" and str(weapon_data_dict.get('hands', "1")) == "2":
                 self.oh_name_label.configure(text="[2 Mãos]"); self.oh_damage_label.configure(text="Dano: ---")
                 self.oh_roll_attack_button.configure(state="disabled"); self.oh_roll_damage_button.configure(state="disabled")
-        else:
+            elif hand_slot == "off" and self.personagem.arma_equipada_principal and str(self.personagem.arma_equipada_principal.get('hands',"1")) == "2":
+                 # Isso não deveria acontecer se a lógica de equipar estiver correta, mas por segurança
+                 self.oh_name_label.configure(text="---"); self.oh_damage_label.configure(text="Dano: ---")
+                 self.oh_roll_attack_button.configure(state="disabled"); self.oh_roll_damage_button.configure(state="disabled")
+
+        else: # Nenhum item no slot
             name_label.configure(text="---"); damage_label.configure(text="Dano: ---")
             attack_button.configure(state="disabled"); damage_button.configure(state="disabled")
+            # Se a mão principal foi desequipada e era de 2 mãos, reabilita a secundária (se não houver nada lá)
+            if hand_slot == "main" and self.personagem.arma_equipada_secundaria is None: # Garante que a secundária não está desabilitada por engano
+                self.oh_roll_attack_button.configure(state="disabled") # Ainda desabilitado pois não há arma
+                self.oh_roll_damage_button.configure(state="disabled")
+
 
     def update_all_inventory_equip_button_states(self):
         for weapon_ui_el_dict in self.weapon_inventory_ui_rows:
             button = weapon_ui_el_dict.get('equip_button')
             weapon_data_ref = weapon_ui_el_dict.get('data_dict_ref') 
             if not button or not weapon_data_ref: continue
+
             is_equipped_main = (self.personagem.arma_equipada_principal == weapon_data_ref) 
             is_equipped_off = (self.personagem.arma_equipada_secundaria == weapon_data_ref) 
+            
             if is_equipped_main or is_equipped_off:
                 button.configure(text="Desequip.", command=lambda wd_ref=weapon_data_ref: self.perform_unequip_action_from_data(wd_ref))
             else:
                 button.configure(text="Equipar", command=lambda w_data=weapon_data_ref: self.equip_weapon(w_data))
+            
+            # Lógica de desabilitar botão "Equipar"
             can_equip_this_item = True
             main_is_two_handed = self.personagem.arma_equipada_principal and str(self.personagem.arma_equipada_principal.get('hands',"1")) == "2"
-            if main_is_two_handed:
-                if not is_equipped_main: can_equip_this_item = False
-            elif self.personagem.arma_equipada_principal and self.personagem.arma_equipada_secundaria:
-                if not (is_equipped_main or is_equipped_off): can_equip_this_item = False
-            if not (is_equipped_main or is_equipped_off) and not can_equip_this_item: button.configure(state="disabled")
-            else: button.configure(state="normal")
+            
+            if is_equipped_main or is_equipped_off: # Se já está equipada, sempre pode desequipar
+                button.configure(state="normal")
+            elif main_is_two_handed: # Arma principal é de 2 mãos e este item não é ela
+                can_equip_this_item = False
+            elif str(weapon_data_ref.get('hands', "1")) == "2": # Tentando equipar item de 2 mãos
+                if self.personagem.arma_equipada_principal is not None or self.personagem.arma_equipada_secundaria is not None:
+                    can_equip_this_item = False # Não pode equipar 2 mãos se algum slot está ocupado
+            elif self.personagem.arma_equipada_principal is not None and self.personagem.arma_equipada_secundaria is not None:
+                # Ambos os slots de 1 mão estão ocupados, e este item não é nenhum deles
+                can_equip_this_item = False
+            
+            button.configure(state="normal" if can_equip_this_item else "disabled")
+
 
     def perform_unequip_action_from_data(self, weapon_data_to_unequip):
         if self.personagem.arma_equipada_principal == weapon_data_to_unequip: self.unequip_weapon("main")
@@ -315,24 +368,38 @@ class CombatTab:
         weapon_data = None
         if hand_slot == "main": weapon_data = self.personagem.arma_equipada_principal
         elif hand_slot == "off": weapon_data = self.personagem.arma_equipada_secundaria
+        
         active_button_group = []; other_button_group = []
-        if hand_slot == "main": active_button_group = [self.mh_roll_attack_button, self.mh_roll_damage_button]; other_button_group = [self.oh_roll_attack_button, self.oh_roll_damage_button]
-        else: active_button_group = [self.oh_roll_attack_button, self.oh_roll_damage_button]; other_button_group = [self.mh_roll_attack_button, self.mh_roll_damage_button]
+        if hand_slot == "main": 
+            active_button_group = [self.mh_roll_attack_button, self.mh_roll_damage_button]
+            if self.personagem.arma_equipada_secundaria: # Só afeta botões da OH se houver algo lá
+                 other_button_group = [self.oh_roll_attack_button, self.oh_roll_damage_button]
+        else: 
+            active_button_group = [self.oh_roll_attack_button, self.oh_roll_damage_button]
+            if self.personagem.arma_equipada_principal: # Só afeta botões da MH se houver algo lá
+                other_button_group = [self.mh_roll_attack_button, self.mh_roll_damage_button]
+
         for btn in active_button_group + other_button_group:
             if btn: btn.configure(state="disabled")
+
         if weapon_data:
-            weapon_name = weapon_data.get('name',"N/A"); atk_attr_short = weapon_data.get('atk_attr',"FOR").strip().upper()
+            weapon_name = weapon_data.get('name',"N/A") # Era 'nome'
+            atk_attr_short = weapon_data.get('atk_attr',"FOR").strip().upper()
             attack_skill_name_selected = weapon_data.get('attack_skill_type',"Corpo-a-Corpo")
-            attribute_name_map = {"FOR": "Força", "DES": "Destreza", "INT": "Inteligência", "SAB": "Sabedoria"}
+            attribute_name_map = {"FOR": "Força", "DES": "Destreza", "INT": "Inteligência", "SAB": "Sabedoria"} #
             char_attr_name_full = attribute_name_map.get(atk_attr_short, "Força")
             try:
-                attribute_value = self.attributes_skills_tab_ref.personagem.atributos.get(char_attr_name_full, 0)
+                attribute_value = self.attributes_skills_tab.personagem.atributos.get(char_attr_name_full, 0)
                 skill_value_for_attack = 1; skill_val_str = ""
                 if attack_skill_name_selected == "Corpo-a-Corpo": skill_val_str = self.cac_val_var.get()
                 elif attack_skill_name_selected == "Pontaria": skill_val_str = self.pontaria_val_var.get()
                 elif attack_skill_name_selected == "Elemental": skill_val_str = self.elemental_val_var.get()
-                skill_value_for_attack = int(skill_val_str.strip()) if skill_val_str.strip().isdigit() else 1
-            except Exception as e: self.action_roll_animation_label.configure(text="Erro"); self.action_roll_result_label.configure(text=f"Dados p/ ataque: {e}"); self.re_enable_action_buttons(); return
+                skill_value_for_attack = int(skill_val_str.strip()) if skill_val_str.strip().lstrip('-').isdigit() else 1
+            except Exception as e: 
+                self.action_roll_animation_label.configure(text="Erro"); 
+                self.action_roll_result_label.configure(text=f"Dados p/ ataque: {e}"); 
+                self.re_enable_action_buttons(); return
+            
             self.action_roll_animation_label.configure(text="")
             self.action_roll_result_label.configure(text=f"Rolando ataque ({attack_skill_name_selected}) com {weapon_name}...")
             self.animate_action_roll(0, "attack", attribute_value, skill_value_for_attack, weapon_name, hand_slot)
@@ -342,44 +409,64 @@ class CombatTab:
         weapon_data = None; modifier_entry_widget = None
         if hand_slot == "main": weapon_data = self.personagem.arma_equipada_principal; modifier_entry_widget = self.mh_damage_mod_entry
         elif hand_slot == "off": weapon_data = self.personagem.arma_equipada_secundaria; modifier_entry_widget = self.oh_damage_mod_entry
+        
         active_button_group = []; other_button_group = []
-        if hand_slot == "main": active_button_group = [self.mh_roll_attack_button, self.mh_roll_damage_button]; other_button_group = [self.oh_roll_attack_button, self.oh_roll_damage_button]
-        else: active_button_group = [self.oh_roll_attack_button, self.oh_roll_damage_button]; other_button_group = [self.mh_roll_attack_button, self.mh_roll_damage_button]
+        if hand_slot == "main": 
+            active_button_group = [self.mh_roll_attack_button, self.mh_roll_damage_button]
+            if self.personagem.arma_equipada_secundaria:
+                 other_button_group = [self.oh_roll_attack_button, self.oh_roll_damage_button]
+        else: 
+            active_button_group = [self.oh_roll_attack_button, self.oh_roll_damage_button]
+            if self.personagem.arma_equipada_principal:
+                other_button_group = [self.mh_roll_attack_button, self.mh_roll_damage_button]
+
         for btn in active_button_group + other_button_group:
             if btn: btn.configure(state="disabled")
+
         if weapon_data:
-            weapon_name = weapon_data.get('name',"N/A"); damage_dice_str = weapon_data.get('damage_dice',"")
+            weapon_name = weapon_data.get('name',"N/A") # Era 'nome'
+            damage_dice_str = weapon_data.get('damage_dice',"")
             try:
                 mod_str = modifier_entry_widget.get()
                 modifier = int(mod_str) if mod_str and (mod_str.startswith(('+', '-')) or mod_str.isdigit()) else 0
             except ValueError: modifier = 0; modifier_entry_widget.delete(0, "end"); modifier_entry_widget.insert(0, "+0")
+            
             self.action_roll_animation_label.configure(text="")
             self.action_roll_result_label.configure(text=f"Rolando dano para {weapon_name}...")
             self.animate_action_roll(0, "damage", damage_dice_str, modifier, weapon_name, hand_slot)
         else: self.action_roll_result_label.configure(text="Nenhuma arma para rolar dano."); self.re_enable_action_buttons()
             
     def re_enable_action_buttons(self):
-        if self.mh_roll_attack_button and self.personagem.arma_equipada_principal: self.mh_roll_attack_button.configure(state="normal")
-        if self.mh_roll_damage_button and self.personagem.arma_equipada_principal: self.mh_roll_damage_button.configure(state="normal")
-        if self.oh_roll_attack_button and self.personagem.arma_equipada_secundaria: self.oh_roll_attack_button.configure(state="normal")
-        if self.oh_roll_damage_button and self.personagem.arma_equipada_secundaria: self.oh_roll_damage_button.configure(state="normal")
+        # Verifica a arma principal
+        if self.mh_roll_attack_button and self.personagem.arma_equipada_principal:
+            self.mh_roll_attack_button.configure(state="normal")
+        if self.mh_roll_damage_button and self.personagem.arma_equipada_principal:
+            self.mh_roll_damage_button.configure(state="normal")
+
+        # Verifica a arma secundária, mas só se a principal não for de 2 mãos
         if self.personagem.arma_equipada_principal and str(self.personagem.arma_equipada_principal.get('hands',"1")) == "2":
             if self.oh_roll_attack_button: self.oh_roll_attack_button.configure(state="disabled")
             if self.oh_roll_damage_button: self.oh_roll_damage_button.configure(state="disabled")
+        else:
+            if self.oh_roll_attack_button and self.personagem.arma_equipada_secundaria:
+                self.oh_roll_attack_button.configure(state="normal")
+            if self.oh_roll_damage_button and self.personagem.arma_equipada_secundaria:
+                self.oh_roll_damage_button.configure(state="normal")
+
 
     def animate_action_roll(self, step, roll_type, value1, value2, item_name_for_display, hand_slot_rolled):
         animation_steps = 8; animation_interval = 60
         if step < animation_steps:
             temp_roll_display = random.randint(1, 20 if roll_type == "attack" else 10) 
             self.action_roll_animation_label.configure(text=str(temp_roll_display))
-            self.tab_widget.after(animation_interval, self.animate_action_roll, step + 1, roll_type, value1, value2, item_name_for_display, hand_slot_rolled)
+            self.tab_widget.after(animation_interval, lambda: self.animate_action_roll(step + 1, roll_type, value1, value2, item_name_for_display, hand_slot_rolled)) # Correção no lambda
         else:
             if roll_type == "attack":
                 final_d20, all_rolls = perform_attribute_test_roll(value1) 
-                success_level = check_success(value2, final_d20, final_d20)
+                success_level = check_success(value2, final_d20, final_d20) # Passa final_d20 para checagem de crítico
                 self.action_roll_animation_label.configure(text=str(final_d20))
                 roll_details = f" (Rolagens: {all_rolls})" if len(all_rolls) > 1 else ""
-                crit_msg = " ACERTO CRÍTICO!" if success_level == "Sucesso Extremo" else ""
+                crit_msg = " ACERTO CRÍTICO!" if success_level == "Sucesso Extremo" else "" # Reajustado para success_level
                 num_dice_attr, roll_type_attr_key = get_dice_for_attribute_test(value1)
                 roll_type_attr_text = ""; 
                 if roll_type_attr_key == "advantage": roll_type_attr_text = " (Maior)"
@@ -395,12 +482,12 @@ class CombatTab:
                 self.action_roll_result_label.configure(text="\n".join(result_text_lines))
             elif roll_type == "damage":
                 rolls, total_base, final_total = parse_and_roll_damage_string(value1, value2)
-                if not rolls and total_base == 0 and final_total == 0 and not (value1.lstrip('-+').isdigit() and not 'd' in value1.lower()):
+                if not rolls and total_base == 0 and final_total == 0 and not (isinstance(value1, str) and value1.lstrip('-+').isdigit() and 'd' not in value1.lower()):
                     self.action_roll_animation_label.configure(text="Erro!"); self.action_roll_result_label.configure(text=f"String de dano '{value1}' inválida.")
                 else:
                     self.action_roll_animation_label.configure(text=str(final_total))
                     roll_details_str = f"Rolagens: {rolls}" if rolls else "Dano Fixo"
-                    mod_base_val = total_base - sum(rolls); mod_add_val = value2
+                    mod_base_val = total_base - sum(rolls if rolls else [0]); mod_add_val = value2 # Garante que sum() não falhe
                     mod_details_list = []
                     if mod_base_val != 0 : mod_details_list.append(f"Mod. Base Str: {mod_base_val:+}")
                     if mod_add_val != 0: mod_details_list.append(f"Mod. Adicional: {mod_add_val:+}")
@@ -408,7 +495,7 @@ class CombatTab:
                     self.action_roll_result_label.configure(text=f"Dano ({item_name_for_display}): {final_total}\n{roll_details_str}{mod_details_str}")
             self.re_enable_action_buttons()
 
-    def is_weapon_equipped_in_other_slot(self, current_hand_slot):
+    def is_weapon_equipped_in_other_slot(self, current_hand_slot): # Não parece estar sendo usada, mas mantida por ora
         if current_hand_slot == "main": return self.personagem.arma_equipada_secundaria is not None
         elif current_hand_slot == "off": 
             return self.personagem.arma_equipada_principal is not None and \
