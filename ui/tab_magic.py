@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from typing import List, Dict, Any, Union, Optional, Callable
+from typing import List, Dict, Any, Union, Optional, Callable, Tuple
 
 # from core.character import Personagem # Para type hinting, se necessário
 

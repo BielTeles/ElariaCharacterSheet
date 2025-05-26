@@ -13,6 +13,19 @@ from core.dice_roller import (
     SUCCESS_EXTREME, SUCCESS_GOOD, SUCCESS_NORMAL,
     FAILURE_NORMAL, FAILURE_EXTREME
 )
+from core.character import (
+    Personagem,
+    FORCA, DESTREZA, CONSTITUICAO, INTELIGENCIA, SABEDORIA, CARISMA  # Adicionado
+)
+from core.dice_roller import (
+    perform_attribute_test_roll,
+    check_success,
+    get_dice_for_attribute_test,
+    # Importando constantes de grau de sucesso para consistência
+    SUCCESS_EXTREME, SUCCESS_GOOD, SUCCESS_NORMAL,
+    FAILURE_NORMAL, FAILURE_EXTREME,
+    ROLL_TYPE_ADVANTAGE, ROLL_TYPE_DISADVANTAGE, ROLL_TYPE_NORMAL # Adicionado ROLL_TYPE_NORMAL também, para completude
+)
 
 # Constantes para nomes de atributos (já definidas em character.py, usadas aqui para clareza conceitual)
 # ATTR_FORCA = "Força" 

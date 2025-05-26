@@ -1,6 +1,6 @@
 import customtkinter as ctk
 import random # Mantido para animação de dados
-from typing import List, Dict, Any, Optional, Tuple, Literal
+from typing import List, Dict, Any, Optional, Tuple, Literal, Union
 
 from core.dice_roller import (
     roll_generic_dice,
@@ -70,11 +70,12 @@ class CombatTab:
     weapon_current_row_idx: int
 
 
-    def __init__(self, tab_widget: ctk.CTkFrame, attributes_skills_tab_ref: Any, personagem_atual: Any, app_ui_ref: Any): # Adicionado app_ui_ref
+    def __init__(self, tab_widget: ctk.CTkFrame, attributes_skills_tab_ref: Any, personagem_atual: Any, app_ui_ref: Any):
+        print("DEBUG: CombatTab __init__ FOI CHAMADO com 4+self args")
         self.tab_widget = tab_widget
-        self.attributes_skills_tab_ref = attributes_skills_tab_ref # Usado para acessar personagem.atributos
+        self.attributes_skills_tab_ref = attributes_skills_tab_ref
         self.personagem = personagem_atual
-        self.app_ui = app_ui_ref # Para show_feedback_message e potencialmente outras interações
+        self.app_ui = app_ui_ref 
 
         self.weapon_inventory_ui_rows = []
 

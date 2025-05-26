@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from typing import Optional # Para o 'event=None'
+from typing import Optional, Any # Para o 'event=None'
 
 # Import da classe Personagem para type hinting
 # Não é estritamente necessário para a execução se o personagem

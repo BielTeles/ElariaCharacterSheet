@@ -1,7 +1,7 @@
 # core/dice_roller.py
 import random
 import re
-from typing import Tuple, List, Optional, Literal
+from typing import Tuple, List, Optional, Literal, Dict
 
 # Constantes para tipos de rolagem
 ROLL_TYPE_NORMAL = "normal"

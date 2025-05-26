@@ -1,8 +1,9 @@
 import customtkinter as ctk
-from tkinter import filedialog, messagebox # Adicionado messagebox para feedback de erro potencial
+import tkinter
+from tkinter import filedialog, messagebox, TclError # Adicionado messagebox para feedback de erro potencial
 import json
-from typing import Dict, Any, List, Optional, Callable
-
+from typing import Dict, Any, List, Optional, Callable, Tuple
+from core.character import Personagem, CLASSE_EVOCADOR, CLASSE_TITA, CLASSE_SENTINELA, CLASSE_ELO
 from core.character import Personagem
 from ui.tab_attributes_skills import AttributesSkillsTab
 from ui.tab_combat import CombatTab
@@ -112,7 +113,7 @@ class AppUI:
         
         # Instanciação das classes das abas
         self.attributes_skills_tab = AttributesSkillsTab(self.tab_attrs_skills_widget, self.personagem_atual)
-        self.combat_tab = CombatTab(self.tab_combat_widget, self.attributes_skills_tab, self.personagem_atual)
+        self.combat_tab = CombatTab(self.tab_combat_widget, self.attributes_skills_tab, self.personagem_atual, self) # Adicionado 'self' no final
         self.magic_tab = MagicTab(self.tab_magia_widget, self.personagem_atual)
         self.inventory_tab = InventoryTab(self.tab_inventario_widget, self.personagem_atual)
         self.store_abilities_tab = StoreAbilitiesTab(self.tab_loja_habilidades_widget, self.personagem_atual, self)
@@ -196,7 +197,7 @@ class AppUI:
             if trace_id_tcl:
                 try:
                     subclass_var.trace_vdelete("w", trace_id_tcl)
-                except ctk.tkinter.TclError:
+                except TclError:
                     pass # Pode já ter sido removido
 
             subclass_widget.configure(values=new_options)
@@ -368,7 +369,7 @@ class AppUI:
                 if trace_id_tcl:
                     try:
                         string_var.trace_vdelete("w", trace_id_tcl)
-                    except ctk.tkinter.TclError:
+                    except TclError:
                         pass # O trace pode já não existir ou ser inválido
 
         # Atualiza as opções de subclasse antes de definir o valor da StringVar de subclasse
