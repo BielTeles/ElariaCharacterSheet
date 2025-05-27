@@ -145,7 +145,7 @@ class AppUI:
         y = (screen_height - window_height) // 2
         
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
-        self.root.minsize(1280, 720)
+        self.root.minsize(1600, 900)
         
         # Configurar ícone da janela
         try:

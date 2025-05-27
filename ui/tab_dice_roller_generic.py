@@ -57,11 +57,11 @@ class DiceRollerGenericTab:
         result_label_title = ctk.CTkLabel(master=result_frame, text="Resultado:", font=ctk.CTkFont(weight="bold"))
         result_label_title.pack(pady=(0,5))
         
-        self.result_text_individual = ctk.CTkLabel(master=result_frame, text="Rolagens Individuais: N/A", justify="left", anchor="w")
-        self.result_text_individual.pack(fill="x", padx=10)
+        self.result_text_individual = ctk.CTkLabel(master=result_frame, text="Rolagens Individuais: N/A", anchor="w")
+        self.result_text_individual.pack(side="top", anchor="w", padx=10, pady=2)
         
-        self.result_text_total = ctk.CTkLabel(master=result_frame, text="Soma Total: N/A", font=ctk.CTkFont(weight="bold"), justify="left", anchor="w")
-        self.result_text_total.pack(fill="x", padx=10)
+        self.result_text_total = ctk.CTkLabel(master=result_frame, text="Soma Total: N/A", font=ctk.CTkFont(weight="bold"), anchor="w")
+        self.result_text_total.pack(side="top", anchor="w", padx=10, pady=2)
 
     # Função de validação opcional para o Entry (exemplo)
     # def _validate_numeric_input(self, P: str) -> bool:

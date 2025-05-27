@@ -108,12 +108,12 @@ class CombatTab:
     def load_data_from_personagem(self) -> None:
         """Carrega dados do objeto Personagem para a UI da aba de Combate."""
         self.rd_total_var.set(str(self.personagem.rd_total))
-        self.esquiva_val_var.set(str(self.personagem.pericias_valores.get("Esquiva", "0")))
-        self.bloqueio_val_var.set(str(self.personagem.pericias_valores.get("Bloqueio", "0")))
-        self.iniciativa_val_var.set(str(self.personagem.pericias_valores.get("Iniciativa", "0")))
-        self.cac_val_var.set(str(self.personagem.pericias_valores.get("Corpo-a-Corpo", "0")))
-        self.pontaria_val_var.set(str(self.personagem.pericias_valores.get("Pontaria", "0")))
-        self.elemental_val_var.set(str(self.personagem.pericias_valores.get("Elemental", "0")))
+        self.esquiva_val_var.set(str(self.personagem.pericias_valores.get("Esquiva", 0)))
+        self.bloqueio_val_var.set(str(self.personagem.pericias_valores.get("Bloqueio", 0)))
+        self.iniciativa_val_var.set(str(self.personagem.pericias_valores.get("Iniciativa", 0)))
+        self.cac_val_var.set(str(self.personagem.pericias_valores.get("Corpo-a-Corpo", 0)))
+        self.pontaria_val_var.set(str(self.personagem.pericias_valores.get("Pontaria", 0)))
+        self.elemental_val_var.set(str(self.personagem.pericias_valores.get("Elemental", 0)))
 
         self.armor_name_var.set(self.personagem.armadura_equipada.get("nome", ""))
         self.armor_rd_var.set(str(self.personagem.armadura_equipada.get("rd_fornecida", "0")))
@@ -284,7 +284,7 @@ class CombatTab:
         
         self.action_roll_animation_label = ctk.CTkLabel(master=equipped_frame, text="", width=100, font=ctk.CTkFont(size=20, weight="bold"))
         self.action_roll_animation_label.grid(row=3, column=1, pady=(10, 2), sticky="w")
-        self.action_roll_result_label = ctk.CTkLabel(master=equipped_frame, text="", width=450, anchor="w", justify="left", wraplength=440)
+        self.action_roll_result_label = ctk.CTkLabel(master=equipped_frame, text="", width=450, anchor="w", wraplength=440)
         self.action_roll_result_label.grid(row=3, column=2, columnspan=5, pady=(10, 2), sticky="ew")
 
     def setup_weapons_list_section(self) -> None:

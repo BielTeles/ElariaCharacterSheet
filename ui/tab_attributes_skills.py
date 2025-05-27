@@ -3,6 +3,85 @@ import random
 from typing import Dict, Any, Optional
 import tkinter
 
+# Definição das cores do tema
+COLORS = {
+    "primary": "#3B82F6",      # Azul principal
+    "primary_hover": "#2563EB",
+    "secondary": "#6B7280",    # Cinza neutro
+    "success": "#10B981",      # Verde
+    "danger": "#EF4444",       # Vermelho
+    "warning": "#F59E0B",      # Amarelo
+    "surface": "#1F2937",      # Fundo de elementos
+    "background": "#111827",   # Fundo geral
+    "text": "#F9FAFB",         # Texto principal
+    "text_secondary": "#9CA3AF" # Texto secundário
+}
+
+# Estilos comuns para widgets
+STYLES = {
+    "button": {
+        "normal": {
+            "width": 35,
+            "height": 35,
+            "corner_radius": 8,
+            "border_width": 2,
+            "font": ("Roboto", 14, "bold")
+        },
+        "small": {
+            "width": 28,
+            "height": 28,
+            "corner_radius": 6,
+            "border_width": 2,
+            "font": ("Roboto", 12, "bold")
+        }
+    },
+    "entry": {
+        "normal": {
+            "width": 60,
+            "height": 35,
+            "corner_radius": 8,
+            "border_width": 2,
+            "font": ("Roboto", 14),
+            "justify": "center"
+        },
+        "small": {
+            "width": 45,
+            "height": 28,
+            "corner_radius": 6,
+            "border_width": 2,
+            "font": ("Roboto", 12),
+            "justify": "center"
+        }
+    },
+    "label": {
+        "title": {
+            "font": ("Roboto", 20, "bold"),
+            "text_color": COLORS["primary"]
+        },
+        "subtitle": {
+            "font": ("Roboto", 16, "bold"),
+            "text_color": COLORS["text"]
+        },
+        "normal": {
+            "font": ("Roboto", 12),
+            "text_color": COLORS["text"]
+        },
+        "small": {
+            "font": ("Roboto", 11),
+            "text_color": COLORS["text_secondary"]
+        }
+    },
+    "checkbox": {
+        "width": 24,
+        "height": 24,
+        "corner_radius": 6,
+        "border_width": 2,
+        "border_color": COLORS["primary"],
+        "fg_color": COLORS["primary"],
+        "hover_color": COLORS["primary_hover"]
+    }
+}
+
 # Assumindo que Personagem e as funções de dice_roller estão acessíveis
 # (serão importadas corretamente quando a AppUI for instanciada)
 from core.character import Personagem 
@@ -31,6 +110,61 @@ from core.dice_roller import (
 # Constantes para nomes de atributos (já definidas em character.py, usadas aqui para clareza conceitual)
 # ATTR_FORCA = "Força" 
 # ... (outros atributos)
+
+# Lista de perícias do jogo
+SKILLS_LIST = [
+    "Acrobacia", "Adestramento", "Atletismo",
+    "Atuação", "Bloqueio", "Cavalgar",
+    "Conhecimento (Arcano)", "Conhecimento (História)",
+    "Conhecimento (Natureza)", "Conhecimento (Religião)",
+    "Conhecimento (Geografia)", "Conhecimento (Reinos)",
+    "Corpo-a-Corpo", "Cura", "Diplomacia",
+    "Elemental", "Enganação", "Esquiva",
+    "Fortitude", "Furtividade", "Guerra",
+    "Iniciativa", "Intimidação", "Intuição",
+    "Investigação", "Jogatina", "Ladinagem",
+    "Misticismo", "Nobreza", "Percepção",
+    "Pontaria", "Reflexos", "Sobrevivência",
+    "Vontade"
+]
+
+# Mapeamento de perícias para seus atributos chave
+SKILL_ATTRIBUTE_MAP = {
+    "Acrobacia": DESTREZA,
+    "Adestramento": CARISMA,
+    "Atletismo": FORCA,
+    "Atuação": CARISMA,
+    "Bloqueio": CONSTITUICAO,
+    "Cavalgar": DESTREZA,
+    "Conhecimento (Arcano)": INTELIGENCIA,
+    "Conhecimento (História)": INTELIGENCIA,
+    "Conhecimento (Natureza)": INTELIGENCIA,
+    "Conhecimento (Religião)": INTELIGENCIA,
+    "Conhecimento (Geografia)": INTELIGENCIA,
+    "Conhecimento (Reinos)": INTELIGENCIA,
+    "Corpo-a-Corpo": FORCA,  # Pode usar FOR ou DES, usando FOR como padrão
+    "Cura": SABEDORIA,
+    "Diplomacia": CARISMA,
+    "Elemental": INTELIGENCIA,  # Pode usar INT ou SAB, usando INT como padrão
+    "Enganação": CARISMA,
+    "Esquiva": DESTREZA,
+    "Fortitude": CONSTITUICAO,
+    "Furtividade": DESTREZA,
+    "Guerra": INTELIGENCIA,
+    "Iniciativa": DESTREZA,
+    "Intimidação": CARISMA,
+    "Intuição": SABEDORIA,
+    "Investigação": INTELIGENCIA,
+    "Jogatina": CARISMA,
+    "Ladinagem": DESTREZA,
+    "Misticismo": INTELIGENCIA,
+    "Nobreza": INTELIGENCIA,
+    "Percepção": SABEDORIA,
+    "Pontaria": DESTREZA,
+    "Reflexos": DESTREZA,
+    "Sobrevivência": SABEDORIA,
+    "Vontade": SABEDORIA
+}
 
 class AttributesSkillsTab:
     """
@@ -63,28 +197,40 @@ class AttributesSkillsTab:
         self.tab_widget = tab_widget
         self.personagem = personagem
 
-        self.main_frame = ctk.CTkFrame(self.tab_widget)
+        # Frame principal com melhor organização
+        self.main_frame = ctk.CTkFrame(self.tab_widget, fg_color="transparent")
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        self.main_frame.columnconfigure(0, weight=1)
-        self.main_frame.columnconfigure(1, weight=2)
-        self.main_frame.rowconfigure(0, weight=1)
-        self.main_frame.rowconfigure(1, weight=0)
+        
+        # Configuração do grid principal para melhor distribuição
+        self.main_frame.grid_columnconfigure(0, weight=1)  # Coluna dos atributos
+        self.main_frame.grid_columnconfigure(1, weight=2)  # Coluna das perícias
+        self.main_frame.grid_rowconfigure(0, weight=1)     # Linha principal expande
+        self.main_frame.grid_rowconfigure(1, weight=0)     # Linha do resultado não expande
 
-        self.attr_points_frame = ctk.CTkFrame(self.main_frame)
-        self.attr_points_frame.grid(row=0, column=0, padx=(0, 5), pady=(0, 10), sticky="nsew")
-        self.attr_points_frame.columnconfigure(0, weight=0)
-        self.attr_points_frame.columnconfigure(1, weight=0)
-        self.attr_points_frame.columnconfigure(2, weight=1)
+        # Frame para atributos e pontos
+        self.attr_points_frame = ctk.CTkFrame(self.main_frame, fg_color=COLORS["surface"])
+        self.attr_points_frame.grid(row=0, column=0, padx=(0, 5), pady=(0, 5), sticky="nsew")
+        self.attr_points_frame.grid_rowconfigure(0, weight=1)
+        self.attr_points_frame.grid_columnconfigure(0, weight=1)
 
+        # Frame para perícias
+        self.skills_frame_container = ctk.CTkFrame(self.main_frame, fg_color=COLORS["surface"])
+        self.skills_frame_container.grid(row=0, column=1, padx=(5, 0), pady=(0, 5), sticky="nsew")
+        self.skills_frame_container.grid_rowconfigure(0, weight=1)
+        self.skills_frame_container.grid_columnconfigure(0, weight=1)
+
+        # Inicialização dos dicionários
         self.attribute_entries = {}
         self.attribute_dice_labels = {}
         self.attribute_stringvars = {}
-
         self.skill_value_stringvars = {}
         self.skill_trained_vars = {}
         self.skill_widgets = {}
         self.skill_key_attribute_map = {}
+        self.skill_value_entries = {}
+        self.skill_dice_labels = {}
 
+        # Inicialização das variáveis de pontos
         self.pv_atuais_var = ctk.StringVar()
         self.pv_max_var = ctk.StringVar()
         self.pm_atuais_var = ctk.StringVar()
@@ -92,451 +238,741 @@ class AttributesSkillsTab:
         self.vigor_atuais_var = ctk.StringVar()
         self.vigor_max_var = ctk.StringVar()
 
+        # Setup das seções
         self.setup_attributes_points_section()
-        self.skills_frame_container = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.skills_frame_container.grid(row=0, column=1, padx=(5, 0), pady=0, sticky="nsew")
-        self.skills_frame_container.rowconfigure(0, weight=1)
         self.setup_skills_section()
         self.setup_dice_roll_result_display_section()
 
+        # Carrega dados iniciais
         self.load_data_from_personagem()
 
     def load_data_from_personagem(self) -> None:
-        """
-        Carrega os dados do objeto Personagem para os widgets da UI desta aba.
-        Este método é chamado quando uma nova ficha é carregada ou criada.
-        """
-        # Carrega Atributos
-        for attr_name_key, string_var in self.attribute_stringvars.items():
-            val_personagem = str(self.personagem.atributos.get(attr_name_key, 0))
-            string_var.set(val_personagem) # Dispara o callback on_attribute_change que atualiza o dice_label
+        """Carrega os dados do personagem para a UI."""
+        # Atributos
+        for attr_name in [FORCA, DESTREZA, CONSTITUICAO, INTELIGENCIA, SABEDORIA, CARISMA]:
+            attr_value = self.personagem.atributos.get(attr_name, 0)
+            self.attribute_stringvars[attr_name].set(str(attr_value))
+            self._update_attribute_dice_display(attr_name)
 
-        # Carrega PV, PM, Vigor (atuais e máximos)
-        self.personagem.recalcular_maximos() # Garante que máximos estão atualizados no modelo
-        self.atualizar_display_maximos() # Atualiza os labels de máximos na UI
+            # Atualiza a cor do entry
+            entry = self.attribute_entries[attr_name + "_val"]
+            if attr_value >= 5:
+                entry.configure(border_color=COLORS["success"], text_color=COLORS["success"])
+            elif attr_value >= 3:
+                entry.configure(border_color=COLORS["primary"], text_color=COLORS["primary"])
+            elif attr_value >= 1:
+                entry.configure(border_color=COLORS["warning"], text_color=COLORS["warning"])
+            else:
+                entry.configure(border_color=COLORS["danger"], text_color=COLORS["danger"])
 
+        # Pontos
         self.pv_atuais_var.set(str(self.personagem.pv_atuais))
+        self.pv_max_var.set(str(self.personagem.pv_maximo))
+        self._update_stat_entry_color(self.pv_current_entry, self.personagem.pv_atuais, self.personagem.pv_maximo)
+
         self.pm_atuais_var.set(str(self.personagem.pm_atuais))
+        self.pm_max_var.set(str(self.personagem.pm_maximo))
+        self._update_stat_entry_color(self.pm_current_entry, self.personagem.pm_atuais, self.personagem.pm_maximo)
+
         self.vigor_atuais_var.set(str(self.personagem.vigor_atuais))
+        self.vigor_max_var.set(str(self.personagem.vigor_maximo))
+        self._update_stat_entry_color(self.vigor_current_entry, self.personagem.vigor_atuais, self.personagem.vigor_maximo)
 
-        # Carrega Perícias (Treinadas e Valores)
-        for skill_name, trained_var in self.skill_trained_vars.items():
-            is_trained_in_model = skill_name in self.personagem.pericias_treinadas
-            trained_var.set(is_trained_in_model) # Dispara on_skill_trained_change
-
-        for skill_name, value_var in self.skill_value_stringvars.items():
-            # O callback on_skill_trained_change já ajusta o valor se necessário,
-            # mas garantimos que o valor carregado do personagem seja refletido.
+        # Perícias
+        for skill_name in SKILLS_LIST:
+            # Valor numérico
+            skill_value = self.personagem.pericias_valores.get(skill_name, 0)
+            self.skill_value_stringvars[skill_name].set(str(skill_value))
+            
+            # Status de treinada
             is_trained = skill_name in self.personagem.pericias_treinadas
-            default_val_if_not_found = 1 if is_trained and self.personagem.pericias_valores.get(skill_name) is None else 0
-            val_personagem_pericia = str(self.personagem.pericias_valores.get(skill_name, default_val_if_not_found))
-            value_var.set(val_personagem_pericia) # Dispara on_skill_value_change
+            self.skill_trained_vars[skill_name].set(is_trained)
+
+            # Atualiza a cor do entry
+            entry = self.skill_value_entries[skill_name]
+            if skill_value >= 8:
+                entry.configure(border_color=COLORS["success"], text_color=COLORS["success"])
+            elif skill_value >= 5:
+                entry.configure(border_color=COLORS["primary"], text_color=COLORS["primary"])
+            elif skill_value >= 1:
+                entry.configure(border_color=COLORS["warning"], text_color=COLORS["warning"])
+            else:
+                entry.configure(border_color=COLORS["danger"], text_color=COLORS["danger"])
 
     def atualizar_display_maximos(self) -> None:
-        """Atualiza os labels da UI que exibem os valores máximos de PV, PM e Vigor."""
-        if hasattr(self, 'personagem'): # Garante que personagem existe
-            self.pv_max_var.set(str(self.personagem.pv_maximo))
-            self.pm_max_var.set(str(self.personagem.pm_maximo))
-            self.vigor_max_var.set(str(self.personagem.vigor_maximo))
+        """Atualiza os valores máximos de PV, PM e Vigor na UI."""
+        # Atualiza os valores máximos
+        self.pv_max_var.set(str(self.personagem.pv_maximo))
+        self.pm_max_var.set(str(self.personagem.pm_maximo))
+        self.vigor_max_var.set(str(self.personagem.vigor_maximo))
+
+        # Atualiza as cores dos entries baseado nos valores atuais vs máximos
+        self._update_stat_entry_color(self.pv_current_entry, self.personagem.pv_atuais, self.personagem.pv_maximo)
+        self._update_stat_entry_color(self.pm_current_entry, self.personagem.pm_atuais, self.personagem.pm_maximo)
+        self._update_stat_entry_color(self.vigor_current_entry, self.personagem.vigor_atuais, self.personagem.vigor_maximo)
 
     def _adjust_attribute_value(self, attr_name: str, amount: int) -> None:
-        """Ajusta o valor de um atributo (usado pelos botões +/-) e atualiza a StringVar."""
+        """Ajusta o valor de um atributo."""
         try:
-            current_val_str = self.attribute_stringvars[attr_name].get()
-            current_val = int(current_val_str) if current_val_str.lstrip('-').isdigit() else 0
-            new_val = current_val + amount
-            if new_val < -1: # Limite inferior para atributos (exemplo)
-                new_val = -1
+            current_val = int(self.attribute_stringvars[attr_name].get())
+            new_val = max(0, current_val + amount)  # Não permite valores negativos
             self.attribute_stringvars[attr_name].set(str(new_val))
-            # O trace na StringVar chamará on_attribute_change
         except ValueError:
-            # Se o valor atual na UI for inválido, redefina para o valor do modelo
-            self.attribute_stringvars[attr_name].set(str(self.personagem.atributos.get(attr_name, 0)))
-        except KeyError:
-            print(f"Erro: Stringvar para atributo {attr_name} não encontrada.") # Para debug
+            self.attribute_stringvars[attr_name].set("0")
 
-    def on_attribute_change(self, attr_name_key: str, string_var_instance: ctk.StringVar, *args) -> None:
-        """
-        Callback acionado quando o valor de uma StringVar de atributo muda.
-        Atualiza o modelo do personagem e o display de dados do atributo (vantagem/desvantagem).
-        """
-        attr_val_str = string_var_instance.get().strip()
-        attr_value_for_model: int
-        attr_value_for_dice_label: int # Valor usado para calcular os dados (pode ser 0 se inválido)
-
-        if not attr_val_str or attr_val_str == "-":
-            attr_value_for_model = 0
-            attr_value_for_dice_label = 0
-        elif attr_val_str.lstrip('-').isdigit():
-            try:
-                attr_value_for_model = int(attr_val_str)
-                attr_value_for_dice_label = attr_value_for_model
-            except ValueError: # Não deveria acontecer se a validação de entrada for boa
-                attr_value_for_model = self.personagem.atributos.get(attr_name_key, 0)
-                attr_value_for_dice_label = attr_value_for_model
-                string_var_instance.set(str(attr_value_for_model)) # Reverte na UI
-        else: # Entrada inválida não numérica
-            attr_value_for_model = self.personagem.atributos.get(attr_name_key, 0)
-            attr_value_for_dice_label = attr_value_for_model
-            string_var_instance.set(str(attr_value_for_model)) # Reverte na UI
-
-        # Atualiza o modelo Personagem apenas se o valor realmente mudou
-        if self.personagem.atributos.get(attr_name_key) != attr_value_for_model:
-            self.personagem.atualizar_atributo(attr_name_key, attr_value_for_model)
-            self.atualizar_display_maximos() # PV/PM/Vigor podem depender de atributos
-
-        # Sempre atualiza o display de dados do atributo na UI
-        num_dice, roll_type_key = get_dice_for_attribute_test(attr_value_for_dice_label)
-        roll_type_text = ""
-        if roll_type_key == ROLL_TYPE_ADVANTAGE:
-            roll_type_text = " (Maior)"
-        elif roll_type_key == ROLL_TYPE_DISADVANTAGE:
-            roll_type_text = " (Menor)"
-        dice_text = f" ({num_dice}d20{roll_type_text})"
-        
-        dice_label_key = attr_name_key + "_dice_label"
-        if dice_label_key in self.attribute_dice_labels:
-            self.attribute_dice_labels[dice_label_key].configure(text=dice_text)
-
-    def setup_attributes_points_section(self) -> None:
-        """Configura os widgets para Atributos, PV, PM e Vigor."""
-        title_attr_label = ctk.CTkLabel(master=self.attr_points_frame, text="Atributos", font=ctk.CTkFont(size=16, weight="bold"))
-        title_attr_label.grid(row=0, column=0, columnspan=3, padx=5, pady=(5,10), sticky="n")
-        
-        # Usando as constantes definidas em character.py (ou que poderiam ser importadas)
-        attributes_order = [FORCA, DESTREZA, CONSTITUICAO, INTELIGENCIA, SABEDORIA, CARISMA]
-
-        for i, attr_name in enumerate(attributes_order):
-            label = ctk.CTkLabel(master=self.attr_points_frame, text=f"{attr_name}:")
-            label.grid(row=i + 1, column=0, padx=(10,2), pady=5, sticky="e")
-            
-            attr_input_frame = ctk.CTkFrame(self.attr_points_frame, fg_color="transparent")
-            attr_input_frame.grid(row=i + 1, column=1, padx=0, pady=2, sticky="w")
-            
-            attr_var = ctk.StringVar()
-            self.attribute_stringvars[attr_name] = attr_var
-            # O lambda agora passa a instância da StringVar diretamente
-            attr_var.trace_add("write", lambda n, idx, mode, sv=attr_var, an=attr_name: self.on_attribute_change(an, sv))
-            
-            minus_button = ctk.CTkButton(master=attr_input_frame, text="-", width=28, height=28,
-                                         command=lambda name=attr_name: self._adjust_attribute_value(name, -1))
-            minus_button.pack(side="left", padx=(0,1))
-            
-            entry_val = ctk.CTkEntry(master=attr_input_frame, width=40, textvariable=attr_var,
-                                     justify="center", placeholder_text="0")
-            entry_val.pack(side="left", padx=1)
-            self.attribute_entries[attr_name + "_val"] = entry_val # Ainda pode ser útil para referenciar o widget
-            
-            plus_button = ctk.CTkButton(master=attr_input_frame, text="+", width=28, height=28,
-                                        command=lambda name=attr_name: self._adjust_attribute_value(name, 1))
-            plus_button.pack(side="left", padx=(1,0))
-            
-            dice_label = ctk.CTkLabel(master=self.attr_points_frame, text="", width=120, anchor="w")
-            dice_label.grid(row=i + 1, column=2, padx=(5,0), pady=5, sticky="w")
-            self.attribute_dice_labels[attr_name + "_dice_label"] = dice_label
-            
-        # Seção de Pontos (PV, PM, Vigor)
-        points_frame = ctk.CTkFrame(self.attr_points_frame)
-        points_frame.grid(row=len(attributes_order) + 1, column=0, columnspan=3, padx=5, pady=(15,5), sticky="ew")
-        points_frame.columnconfigure(0, weight=1); points_frame.columnconfigure(1, weight=1)
-        points_frame.columnconfigure(2, weight=0); points_frame.columnconfigure(3, weight=1)
-
-        # PV
-        pv_label = ctk.CTkLabel(master=points_frame, text="PV:")
-        pv_label.grid(row=0, column=0, padx=5, pady=5, sticky="e")
-        self.pv_current_entry = ctk.CTkEntry(master=points_frame, placeholder_text="Atual", width=60, textvariable=self.pv_atuais_var)
-        self.pv_current_entry.grid(row=0, column=1, padx=2, pady=5, sticky="ew")
-        self.pv_atuais_var.trace_add("write", lambda n,i,m, sv=self.pv_atuais_var: self._update_current_stat_pv(sv))
-        ctk.CTkLabel(master=points_frame, text="/").grid(row=0, column=2, padx=0, pady=5)
-        self.pv_max_label = ctk.CTkLabel(master=points_frame, textvariable=self.pv_max_var, width=60)
-        self.pv_max_label.grid(row=0, column=3, padx=2, pady=5, sticky="ew")
-
-        # PM
-        pm_label = ctk.CTkLabel(master=points_frame, text="PM:")
-        pm_label.grid(row=1, column=0, padx=5, pady=5, sticky="e")
-        self.pm_current_entry = ctk.CTkEntry(master=points_frame, placeholder_text="Atual", width=60, textvariable=self.pm_atuais_var)
-        self.pm_current_entry.grid(row=1, column=1, padx=2, pady=5, sticky="ew")
-        self.pm_atuais_var.trace_add("write", lambda n,i,m, sv=self.pm_atuais_var: self._update_current_stat_pm(sv))
-        ctk.CTkLabel(master=points_frame, text="/").grid(row=1, column=2, padx=0, pady=5)
-        self.pm_max_label = ctk.CTkLabel(master=points_frame, textvariable=self.pm_max_var, width=60)
-        self.pm_max_label.grid(row=1, column=3, padx=2, pady=5, sticky="ew")
-
-        # Vigor
-        vigor_label = ctk.CTkLabel(master=points_frame, text="Vigor (V):")
-        vigor_label.grid(row=2, column=0, padx=5, pady=5, sticky="e")
-        self.vigor_current_entry = ctk.CTkEntry(master=points_frame, placeholder_text="Atual", width=60, textvariable=self.vigor_atuais_var)
-        self.vigor_current_entry.grid(row=2, column=1, padx=2, pady=5, sticky="ew")
-        self.vigor_atuais_var.trace_add("write", lambda n,i,m, sv=self.vigor_atuais_var: self._update_current_stat_vigor(sv))
-        ctk.CTkLabel(master=points_frame, text="/").grid(row=2, column=2, padx=0, pady=5)
-        self.vigor_max_label = ctk.CTkLabel(master=points_frame, textvariable=self.vigor_max_var, width=60)
-        self.vigor_max_label.grid(row=2, column=3, padx=2, pady=5, sticky="ew")
-
-    # Callbacks específicos para PV, PM, Vigor para usar os setters do Personagem
-    def _update_current_stat_pv(self, current_val_var: ctk.StringVar) -> None:
+    def on_attribute_change(self, attr_name: str, attr_var: ctk.StringVar) -> None:
+        """Manipula mudanças nos valores dos atributos."""
         try:
-            current_val = int(current_val_var.get())
-            if self.personagem.pv_atuais != current_val: # Evita loop se o setter redefinir a stringvar
-                self.personagem.pv_atuais = current_val
-                # Se o setter do personagem ajustar o valor, precisamos garantir que a stringvar reflita isso.
-                # A property Personagem.pv_atuais já faz a validação, então aqui só precisamos ler de volta se necessário.
-                if str(self.personagem.pv_atuais) != current_val_var.get():
-                    current_val_var.set(str(self.personagem.pv_atuais))
+            new_val = int(attr_var.get())
+            if new_val < 0:
+                new_val = 0
+                attr_var.set("0")
+            
+            # Atualiza o personagem
+            self.personagem.atributos[attr_name] = new_val
+            
+            # Atualiza o display dos dados
+            self._update_attribute_dice_display(attr_name)
+            
+            # Atualiza a cor do entry
+            entry = self.attribute_entries[attr_name + "_val"]
+            if new_val >= 5:
+                entry.configure(border_color=COLORS["success"], text_color=COLORS["success"])
+            elif new_val >= 3:
+                entry.configure(border_color=COLORS["primary"], text_color=COLORS["primary"])
+            elif new_val >= 1:
+                entry.configure(border_color=COLORS["warning"], text_color=COLORS["warning"])
+            else:
+                entry.configure(border_color=COLORS["danger"], text_color=COLORS["danger"])
+                
         except ValueError:
-            current_val_var.set(str(self.personagem.pv_atuais)) # Reverte para o valor do modelo
-
-    def _update_current_stat_pm(self, current_val_var: ctk.StringVar) -> None:
-        try:
-            current_val = int(current_val_var.get())
-            if self.personagem.pm_atuais != current_val:
-                self.personagem.pm_atuais = current_val
-                if str(self.personagem.pm_atuais) != current_val_var.get():
-                    current_val_var.set(str(self.personagem.pm_atuais))
-        except ValueError:
-            current_val_var.set(str(self.personagem.pm_atuais))
-
-    def _update_current_stat_vigor(self, current_val_var: ctk.StringVar) -> None:
-        try:
-            current_val = int(current_val_var.get())
-            if self.personagem.vigor_atuais != current_val:
-                self.personagem.vigor_atuais = current_val
-                if str(self.personagem.vigor_atuais) != current_val_var.get():
-                    current_val_var.set(str(self.personagem.vigor_atuais))
-        except ValueError:
-            current_val_var.set(str(self.personagem.vigor_atuais))
+            # Reverte para o valor anterior em caso de entrada inválida
+            attr_var.set(str(self.personagem.atributos.get(attr_name, 0)))
 
     def _adjust_skill_value(self, skill_name: str, amount: int) -> None:
-        """Ajusta o valor de uma perícia (usado pelos botões +/-) e atualiza a StringVar."""
+        """Ajusta o valor de uma perícia."""
         try:
-            value_var = self.skill_value_stringvars[skill_name]
-            current_val_str = value_var.get()
-            current_val = int(current_val_str) if current_val_str.strip().lstrip('-').isdigit() else 0
-            
-            new_val = current_val + amount
-            
-            is_trained = self.skill_trained_vars.get(skill_name, ctk.BooleanVar(value=False)).get()
-            min_val = 1 if is_trained and new_val < 1 else 0
-            if not is_trained and new_val < 0: # Não treinado não pode ser < 0
-                min_val = 0
-                
-            if new_val < min_val:
-                new_val = min_val
-            
-            value_var.set(str(new_val))
-            # O trace na StringVar chamará on_skill_value_change
+            current_val = int(self.skill_value_stringvars[skill_name].get())
+            new_val = max(0, current_val + amount)  # Não permite valores negativos
+            self.skill_value_stringvars[skill_name].set(str(new_val))
         except ValueError:
-            is_trained_check = self.skill_trained_vars.get(skill_name, ctk.BooleanVar(value=False)).get()
-            default_revert_val = 1 if is_trained_check else 0
-            self.skill_value_stringvars[skill_name].set(str(self.personagem.pericias_valores.get(skill_name, default_revert_val)))
-        except KeyError:
-            print(f"Erro: Stringvar para perícia {skill_name} não encontrada.") # Para debug
+            self.skill_value_stringvars[skill_name].set("0")
 
-    def on_skill_value_change(self, skill_name: str, string_var_instance: ctk.StringVar, *args) -> None:
-        """
-        Callback acionado quando o valor de uma StringVar de perícia muda.
-        Atualiza o modelo do personagem.
-        """
-        skill_val_str = string_var_instance.get().strip()
-        new_value_for_model: int
-        
-        is_trained = self.skill_trained_vars.get(skill_name, ctk.BooleanVar(value=False)).get()
-        
-        if skill_val_str.lstrip('-').isdigit(): # Permite números negativos, mas a lógica abaixo corrige
-            new_value_for_model = int(skill_val_str)
-            if is_trained and new_value_for_model < 1:
-                new_value_for_model = 1
-            elif not is_trained and new_value_for_model < 0: # Se não treinado, valor mínimo é 0
-                new_value_for_model = 0
-        elif skill_val_str == "": # Campo vazio
-            new_value_for_model = 1 if is_trained else 0
-        else: # Entrada inválida
-            current_val_in_obj = self.personagem.pericias_valores.get(skill_name, 1 if is_trained else 0)
-            string_var_instance.set(str(current_val_in_obj))
-            return
-
-        # Garante que a UI reflita o valor corrigido se necessário
-        if str(new_value_for_model) != skill_val_str:
-            string_var_instance.set(str(new_value_for_model))
-            # O set() acima irá re-disparar este callback, mas a condição abaixo evitará loop infinito.
-
-        # Atualiza o modelo Personagem apenas se o valor realmente mudou
-        if self.personagem.pericias_valores.get(skill_name) != new_value_for_model:
-            self.personagem.atualizar_pericia_valor(skill_name, new_value_for_model)
-
-    def on_skill_trained_change(self, skill_name: str, boolean_var_instance: tkinter.BooleanVar, *args) -> None:
-        """
-        Callback acionado quando o checkbox "treinada" de uma perícia muda.
-        Atualiza o modelo e o valor da perícia na UI (mínimo 1 se treinada, 0 se não).
-        """
-        is_trained_ui = boolean_var_instance.get()
-
-        if (skill_name in self.personagem.pericias_treinadas) != is_trained_ui:
-            self.personagem.marcar_pericia_treinada(skill_name, is_trained_ui)
-
-        value_var = self.skill_value_stringvars.get(skill_name)
-        if value_var:
-            current_skill_val_str = value_var.get()
-            try:
-                current_skill_val = int(current_skill_val_str)
-            except ValueError:
-                current_skill_val = 0
-
-            new_val_for_ui: Optional[str] = None
-            if is_trained_ui and current_skill_val < 1:
-                new_val_for_ui = "1"
-            elif not is_trained_ui and current_skill_val != 0:
-                new_val_for_ui = "0"
+    def on_skill_value_change(self, skill_name: str, value_var: ctk.StringVar) -> None:
+        """Manipula mudanças nos valores das perícias."""
+        try:
+            new_val = int(value_var.get())
+            if new_val < 0:
+                new_val = 0
+                value_var.set("0")
             
-            if new_val_for_ui is not None and value_var.get() != new_val_for_ui:
-                value_var.set(new_val_for_ui)
+            # Atualiza o personagem
+            self.personagem.pericias_valores[skill_name] = new_val
+            
+            # Atualiza a cor do entry
+            entry = self.skill_value_entries[skill_name]
+            if new_val >= 8:
+                entry.configure(border_color=COLORS["success"], text_color=COLORS["success"])
+            elif new_val >= 5:
+                entry.configure(border_color=COLORS["primary"], text_color=COLORS["primary"])
+            elif new_val >= 1:
+                entry.configure(border_color=COLORS["warning"], text_color=COLORS["warning"])
+            else:
+                entry.configure(border_color=COLORS["danger"], text_color=COLORS["danger"])
+                
+        except ValueError:
+            # Reverte para o valor anterior em caso de entrada inválida
+            value_var.set(str(self.personagem.pericias_valores.get(skill_name, 0)))
 
-    def setup_skills_section(self) -> None:
-        """Configura os widgets para a lista de Perícias."""
-        self.skills_scroll_frame = ctk.CTkScrollableFrame(self.skills_frame_container, label_text="Perícias", label_font=ctk.CTkFont(size=16, weight="bold"))
-        self.skills_scroll_frame.pack(fill="both", expand=True)
+    def on_skill_trained_change(self, skill_name: str, trained_var: tkinter.BooleanVar) -> None:
+        """Manipula mudanças no status de treinamento das perícias."""
+        is_trained = trained_var.get()
+        
+        # Atualiza o personagem
+        if is_trained:
+            self.personagem.pericias_treinadas.add(skill_name)
+        else:
+            self.personagem.pericias_treinadas.discard(skill_name)
 
-        self.skills_scroll_frame.columnconfigure(0, weight=3)  # Nome da Perícia
-        self.skills_scroll_frame.columnconfigure(1, weight=0)  # Treinada (Checkbox)
-        self.skills_scroll_frame.columnconfigure(2, weight=0)  # Frame para Valor e botões +/-
-        self.skills_scroll_frame.columnconfigure(3, weight=1)  # Atributo Chave
-        self.skills_scroll_frame.columnconfigure(4, weight=0)  # Botão de Rolagem
+    def _update_stat_entry_color(self, entry: ctk.CTkEntry, current: int, maximum: int) -> None:
+        """Atualiza a cor do entry baseado no valor atual vs máximo."""
+        if current <= 0:
+            entry.configure(border_color=COLORS["danger"], text_color=COLORS["danger"])
+        elif current <= maximum // 4:
+            entry.configure(border_color=COLORS["warning"], text_color=COLORS["warning"])
+        elif current <= maximum // 2:
+            entry.configure(border_color=COLORS["primary"], text_color=COLORS["primary"])
+        else:
+            entry.configure(border_color=COLORS["success"], text_color=COLORS["success"])
 
-        # Lista de perícias e seus atributos chave de lookup no dicionário self.personagem.atributos
-        skill_list_data = [
-            ("Acrobacia", "DES", DESTREZA), ("Adestramento", "CAR", CARISMA), ("Atletismo", "FOR", FORCA),
-            ("Atuação", "CAR", CARISMA), ("Bloqueio", "CON", CONSTITUICAO), ("Cavalgar", "DES", DESTREZA),
-            ("Conhecimento (Arcano)", "INT", INTELIGENCIA), ("Conhecimento (História)", "INT", INTELIGENCIA),
-            ("Conhecimento (Natureza)", "INT", INTELIGENCIA), ("Conhecimento (Religião)", "INT", INTELIGENCIA),
-            ("Conhecimento (Geografia)", "INT", INTELIGENCIA), ("Conhecimento (Reinos)", "INT", INTELIGENCIA),
-            ("Corpo-a-Corpo", "DES/FOR", FORCA), # Usar FORÇA como padrão para lookup, UI pode indicar flexibilidade
-            ("Cura", "SAB", SABEDORIA), ("Diplomacia", "CAR", CARISMA),
-            ("Elemental", "INT/SAB", INTELIGENCIA), # Usar INT como padrão para lookup
-            ("Enganação", "CAR", CARISMA), ("Esquiva", "DES", DESTREZA),
-            ("Fortitude", "CON", CONSTITUICAO), ("Furtividade", "DES", DESTREZA),
-            ("Guerra", "INT", INTELIGENCIA), ("Iniciativa", "DES", DESTREZA),
-            ("Intimidação", "CAR", CARISMA), ("Intuição", "SAB", SABEDORIA),
-            ("Investigação", "INT", INTELIGENCIA), ("Jogatina", "CAR", CARISMA),
-            ("Ladinagem", "DES", DESTREZA), ("Misticismo", "INT", INTELIGENCIA),
-            ("Nobreza", "INT", INTELIGENCIA), ("Percepção", "SAB", SABEDORIA),
-            ("Pontaria", "DES", DESTREZA), ("Reflexos", "DES", DESTREZA),
-            ("Sobrevivência", "SAB", SABEDORIA), ("Vontade", "SAB", SABEDORIA)
+    def _update_attribute_dice_display(self, attr_name: str) -> None:
+        """Atualiza o display dos dados para um atributo."""
+        try:
+            attr_value = int(self.attribute_stringvars[attr_name].get())
+            num_dice, roll_type = get_dice_for_attribute_test(attr_value)
+            
+            # Determina o texto do tipo de rolagem
+            roll_type_text = ""
+            if roll_type == ROLL_TYPE_ADVANTAGE:
+                roll_type_text = "↑"  # Seta para cima indica vantagem
+            elif roll_type == ROLL_TYPE_DISADVANTAGE:
+                roll_type_text = "↓"  # Seta para baixo indica desvantagem
+            
+            # Atualiza o label com a informação dos dados
+            dice_label = self.attribute_dice_labels[attr_name + "_dice_label"]
+            dice_text = f"{num_dice}d20{roll_type_text}"
+            
+            # Define a cor baseada no número de dados
+            if num_dice > 1:
+                text_color = COLORS["success"]
+            elif roll_type == ROLL_TYPE_ADVANTAGE:
+                text_color = COLORS["primary"]
+            elif roll_type == ROLL_TYPE_DISADVANTAGE:
+                text_color = COLORS["warning"]
+            else:
+                text_color = COLORS["text"]
+            
+            dice_label.configure(text=dice_text, text_color=text_color)
+            
+        except ValueError:
+            # Em caso de erro, mostra o padrão de 1d20
+            dice_label = self.attribute_dice_labels[attr_name + "_dice_label"]
+            dice_label.configure(text="1d20", text_color=COLORS["text"])
+
+    def setup_attributes_points_section(self) -> None:
+        """Configura os widgets para Atributos, PV, PM e Vigor com visual aprimorado."""
+        # Frame principal dos atributos
+        attr_frame = ctk.CTkFrame(
+            self.attr_points_frame,
+            fg_color="transparent",
+            border_width=2,
+            border_color=COLORS["primary"],
+            corner_radius=10
+        )
+        attr_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Título da seção
+        title_attr_label = ctk.CTkLabel(
+            master=attr_frame,
+            text="Atributos",
+            **STYLES["label"]["title"]
+        )
+        title_attr_label.pack(pady=(15, 20))
+
+        # Frame para os atributos
+        attributes_frame = ctk.CTkFrame(attr_frame, fg_color="transparent")
+        attributes_frame.pack(fill="x", padx=15, pady=5)
+        
+        # Grid para os atributos
+        attributes_frame.columnconfigure(0, weight=0)  # Nome (fixo)
+        attributes_frame.columnconfigure(1, weight=1)  # Controles (expansível)
+        attributes_frame.columnconfigure(2, weight=0)  # Dados (fixo)
+
+        # Lista de atributos com suas abreviações
+        attributes = [
+            (FORCA, "FOR"),
+            (DESTREZA, "DES"),
+            (CONSTITUICAO, "CON"),
+            (INTELIGENCIA, "INT"),
+            (SABEDORIA, "SAB"),
+            (CARISMA, "CAR")
         ]
 
-        for i, (skill_name, key_attr_display, key_attr_lookup_name) in enumerate(skill_list_data):
-            name_label = ctk.CTkLabel(master=self.skills_scroll_frame, text=skill_name, anchor="w")
-            name_label.grid(row=i, column=0, padx=5, pady=3, sticky="ew")
+        for i, (attr_name, attr_abbrev) in enumerate(attributes):
+            # Label do atributo com abreviação
+            label = ctk.CTkLabel(
+                master=attributes_frame,
+                text=f"{attr_name} ({attr_abbrev}):",
+                anchor="e",
+                width=120,
+                **STYLES["label"]["normal"]
+            )
+            label.grid(row=i, column=0, padx=(5, 10), pady=5, sticky="e")
 
+            # Frame para os controles (-, entry, +)
+            controls_frame = ctk.CTkFrame(attributes_frame, fg_color="transparent")
+            controls_frame.grid(row=i, column=1, sticky="w", padx=5)
+
+            # Botão de diminuir
+            minus_button = ctk.CTkButton(
+                master=controls_frame,
+                text="-",
+                width=25,
+                height=25,
+                fg_color="transparent",
+                border_color=COLORS["danger"],
+                hover_color=COLORS["surface"],
+                text_color=COLORS["danger"],
+                command=lambda name=attr_name: self._adjust_attribute_value(name, -1)
+            )
+            minus_button.pack(side="left", padx=2)
+
+            # Entry do valor
+            attr_var = ctk.StringVar()
+            self.attribute_stringvars[attr_name] = attr_var
+            attr_var.trace_add("write", lambda n, idx, mode, sv=attr_var, an=attr_name: self.on_attribute_change(an, sv))
+            
+            entry_val = ctk.CTkEntry(
+                master=controls_frame,
+                textvariable=attr_var,
+                placeholder_text="0",
+                width=50,
+                border_color=COLORS["primary"]
+            )
+            entry_val.pack(side="left", padx=5)
+            self.attribute_entries[attr_name + "_val"] = entry_val
+
+            # Botão de aumentar
+            plus_button = ctk.CTkButton(
+                master=controls_frame,
+                text="+",
+                width=25,
+                height=25,
+                fg_color="transparent",
+                border_color=COLORS["success"],
+                hover_color=COLORS["surface"],
+                text_color=COLORS["success"],
+                command=lambda name=attr_name: self._adjust_attribute_value(name, 1)
+            )
+            plus_button.pack(side="left", padx=2)
+
+            # Label dos dados
+            dice_label = ctk.CTkLabel(
+                master=attributes_frame,
+                text="",
+                width=100,
+                anchor="w",
+                **STYLES["label"]["small"]
+            )
+            dice_label.grid(row=i, column=2, padx=10, sticky="w")
+            self.attribute_dice_labels[attr_name + "_dice_label"] = dice_label
+
+        # Seção de Pontos
+        points_frame = ctk.CTkFrame(
+            attr_frame,
+            fg_color="transparent",
+            border_width=2,
+            border_color=COLORS["secondary"],
+            corner_radius=8
+        )
+        points_frame.pack(fill="x", padx=15, pady=(20, 15))
+
+        # Título da seção de pontos
+        points_title = ctk.CTkLabel(
+            master=points_frame,
+            text="Pontos",
+            **STYLES["label"]["subtitle"]
+        )
+        points_title.pack(pady=(10, 15))
+
+        # Frame interno para os pontos
+        points_inner_frame = ctk.CTkFrame(points_frame, fg_color="transparent")
+        points_inner_frame.pack(fill="x", padx=15, pady=(0, 15))
+
+        # Configuração do grid para os pontos
+        points_inner_frame.columnconfigure(0, weight=0)  # Label (fixo)
+        points_inner_frame.columnconfigure(1, weight=1)  # Entry atual (expansível)
+        points_inner_frame.columnconfigure(2, weight=0)  # Separador (fixo)
+        points_inner_frame.columnconfigure(3, weight=0)  # Label máximo (fixo)
+
+        # Pontos com suas cores específicas
+        points_types = [
+            ("PV", self.pv_atuais_var, self.pv_max_var, COLORS["danger"]),
+            ("PM", self.pm_atuais_var, self.pm_max_var, COLORS["primary"]),
+            ("Vigor", self.vigor_atuais_var, self.vigor_max_var, COLORS["success"])
+        ]
+
+        for i, (point_type, current_var, max_var, color) in enumerate(points_types):
+            # Label
+            ctk.CTkLabel(
+                master=points_inner_frame,
+                text=f"{point_type}:",
+                anchor="e",
+                width=60,
+                **STYLES["label"]["normal"]
+            ).grid(row=i, column=0, padx=(5, 10), pady=3, sticky="e")
+
+            # Entry do valor atual
+            current_entry = ctk.CTkEntry(
+                master=points_inner_frame,
+                textvariable=current_var,
+                placeholder_text="Atual",
+                width=70,
+                border_color=color
+            )
+            current_entry.grid(row=i, column=1, padx=2, pady=3, sticky="w")
+
+            # Configurar o callback para atualização do valor atual
+            if point_type == "PV":
+                self.pv_current_entry = current_entry
+                current_var.trace_add("write", lambda n,i,m,sv=current_var: self._update_current_stat_pv(sv))
+            elif point_type == "PM":
+                self.pm_current_entry = current_entry
+                current_var.trace_add("write", lambda n,i,m,sv=current_var: self._update_current_stat_pm(sv))
+            else:  # Vigor
+                self.vigor_current_entry = current_entry
+                current_var.trace_add("write", lambda n,i,m,sv=current_var: self._update_current_stat_vigor(sv))
+
+            # Separador
+            ctk.CTkLabel(
+                master=points_inner_frame,
+                text="/",
+                **STYLES["label"]["normal"]
+            ).grid(row=i, column=2, padx=5, pady=3)
+
+            # Label do valor máximo
+            max_label = ctk.CTkLabel(
+                master=points_inner_frame,
+                textvariable=max_var,
+                width=50,
+                anchor="center",
+                fg_color=COLORS["surface"],
+                corner_radius=8,
+                **STYLES["label"]["normal"]
+            )
+            max_label.grid(row=i, column=3, padx=2, pady=3, sticky="w")
+
+    def setup_skills_section(self) -> None:
+        """Configura a seção de perícias com visual aprimorado."""
+        # Frame principal das perícias
+        skills_frame = ctk.CTkFrame(
+            self.skills_frame_container,
+            fg_color="transparent",
+            border_width=2,
+            border_color=COLORS["primary"],
+            corner_radius=10
+        )
+        skills_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Título da seção
+        title_skills_label = ctk.CTkLabel(
+            master=skills_frame,
+            text="Perícias",
+            **STYLES["label"]["title"]
+        )
+        title_skills_label.pack(pady=(15, 20))
+
+        # Frame scrollável para as perícias
+        self.skills_scroll_frame = ctk.CTkScrollableFrame(
+            master=skills_frame,
+            fg_color="transparent",
+            height=400
+        )
+        self.skills_scroll_frame.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+
+        # Configuração do grid para as perícias
+        self.skills_scroll_frame.columnconfigure(0, weight=1)  # Nome da perícia (expansível)
+        self.skills_scroll_frame.columnconfigure(1, weight=0)  # Treinada (fixo)
+        self.skills_scroll_frame.columnconfigure(2, weight=0)  # Controles de valor (fixo)
+        self.skills_scroll_frame.columnconfigure(3, weight=0)  # Atributo (fixo)
+        self.skills_scroll_frame.columnconfigure(4, weight=0)  # Rolar (fixo)
+
+        # Cabeçalho das colunas
+        headers = [
+            ("Perícia", "w", 1), 
+            ("Treinada", "center", 0),
+            ("Valor", "center", 0),
+            ("Atributo", "center", 0),
+            ("", "center", 0)  # Coluna do botão de rolar
+        ]
+        
+        for col, (text, align, weight) in enumerate(headers):
+            self.skills_scroll_frame.columnconfigure(col, weight=weight)
+            if text:  # Só cria label se houver texto
+                ctk.CTkLabel(
+                    self.skills_scroll_frame,
+                    text=text,
+                    anchor=align,
+                    **STYLES["label"]["small"]
+                ).grid(row=0, column=col, padx=5, pady=(0,10), sticky="ew")
+
+        # Lista de perícias com seus atributos
+        skills_data = [
+            ("Acrobacia", "DES", DESTREZA),
+            ("Adestramento", "CAR", CARISMA),
+            ("Atletismo", "FOR", FORCA),
+            ("Atuação", "CAR", CARISMA),
+            ("Bloqueio", "CON", CONSTITUICAO),
+            ("Cavalgar", "DES", DESTREZA),
+            ("Conhecimento (Arcano)", "INT", INTELIGENCIA),
+            ("Conhecimento (História)", "INT", INTELIGENCIA),
+            ("Conhecimento (Natureza)", "INT", INTELIGENCIA),
+            ("Conhecimento (Religião)", "INT", INTELIGENCIA),
+            ("Conhecimento (Geografia)", "INT", INTELIGENCIA),
+            ("Conhecimento (Reinos)", "INT", INTELIGENCIA),
+            ("Corpo-a-Corpo", "FOR/DES", FORCA),
+            ("Cura", "SAB", SABEDORIA),
+            ("Diplomacia", "CAR", CARISMA),
+            ("Elemental", "INT/SAB", INTELIGENCIA),
+            ("Enganação", "CAR", CARISMA),
+            ("Esquiva", "DES", DESTREZA),
+            ("Fortitude", "CON", CONSTITUICAO),
+            ("Furtividade", "DES", DESTREZA),
+            ("Guerra", "INT", INTELIGENCIA),
+            ("Iniciativa", "DES", DESTREZA),
+            ("Intimidação", "CAR", CARISMA),
+            ("Intuição", "SAB", SABEDORIA),
+            ("Investigação", "INT", INTELIGENCIA),
+            ("Jogatina", "CAR", CARISMA),
+            ("Ladinagem", "DES", DESTREZA),
+            ("Misticismo", "INT", INTELIGENCIA),
+            ("Nobreza", "INT", INTELIGENCIA),
+            ("Percepção", "SAB", SABEDORIA),
+            ("Pontaria", "DES", DESTREZA),
+            ("Reflexos", "DES", DESTREZA),
+            ("Sobrevivência", "SAB", SABEDORIA),
+            ("Vontade", "SAB", SABEDORIA)
+        ]
+
+        for i, (skill_name, attr_abbrev, attr_key) in enumerate(skills_data, start=1):
+            # Nome da perícia
+            name_label = ctk.CTkLabel(
+                master=self.skills_scroll_frame,
+                text=skill_name,
+                anchor="w",
+                **STYLES["label"]["normal"]
+            )
+            name_label.grid(row=i, column=0, padx=5, pady=2, sticky="ew")
+
+            # Checkbox de treinada
             trained_var = tkinter.BooleanVar()
             trained_var.trace_add("write", lambda n,idx,m,bv=trained_var,sn=skill_name: self.on_skill_trained_change(sn,bv))
-            trained_check = ctk.CTkCheckBox(master=self.skills_scroll_frame, text="", width=20)
-            trained_check.configure(variable=trained_var)
-            trained_check.grid(row=i, column=1, padx=5, pady=3, sticky="w")
-            self.skill_trained_vars[skill_name] = trained_var
-            self.skill_widgets[skill_name + "_trained_cb"] = trained_check
-
-            skill_value_frame = ctk.CTkFrame(self.skills_scroll_frame, fg_color="transparent")
-            skill_value_frame.grid(row=i, column=2, padx=2, pady=1, sticky="w")
-
-            skill_minus_button = ctk.CTkButton(master=skill_value_frame, text="-", width=25, height=25,
-                                               command=lambda name=skill_name: self._adjust_skill_value(name, -1))
-            skill_minus_button.pack(side="left", padx=(0,1))
-
-            value_var = ctk.StringVar()
-            value_var.trace_add("write", lambda n,idx,m,sv=value_var,sn=skill_name: self.on_skill_value_change(sn,sv))
-            value_entry = ctk.CTkEntry(master=skill_value_frame, width=35, placeholder_text="0", textvariable=value_var, justify="center")
-            value_entry.pack(side="left", padx=1)
-            self.skill_value_stringvars[skill_name] = value_var
-            self.skill_widgets[skill_name + "_value_entry"] = value_entry
-
-            skill_plus_button = ctk.CTkButton(master=skill_value_frame, text="+", width=25, height=25,
-                                              command=lambda name=skill_name: self._adjust_skill_value(name, 1))
-            skill_plus_button.pack(side="left", padx=(1,0))
-
-            attr_label_ui = ctk.CTkLabel(master=self.skills_scroll_frame, text=f"({key_attr_display})", anchor="w")
-            attr_label_ui.grid(row=i, column=3, padx=5, pady=3, sticky="w")
-            self.skill_key_attribute_map[skill_name] = key_attr_lookup_name # Armazena o nome do atributo para consulta
-
-            roll_button = ctk.CTkButton(
-                master=self.skills_scroll_frame, text="🎲", width=30, height=28,
-                command=lambda s_name=skill_name, attr_key_n=key_attr_lookup_name: self.roll_specific_skill(s_name, attr_key_n)
+            trained_check = ctk.CTkCheckBox(
+                master=self.skills_scroll_frame,
+                text="",
+                variable=trained_var,
+                width=20
             )
-            roll_button.grid(row=i, column=4, padx=5, pady=3, sticky="e")
+            trained_check.grid(row=i, column=1, padx=5, pady=2)
+            self.skill_trained_vars[skill_name] = trained_var
+
+            # Frame para os controles de valor
+            value_frame = ctk.CTkFrame(self.skills_scroll_frame, fg_color="transparent")
+            value_frame.grid(row=i, column=2, padx=5, pady=2)
+
+            # Botão de diminuir
+            minus_button = ctk.CTkButton(
+                master=value_frame,
+                text="-",
+                width=25,
+                height=25,
+                fg_color="transparent",
+                border_color=COLORS["danger"],
+                hover_color=COLORS["surface"],
+                text_color=COLORS["danger"],
+                command=lambda name=skill_name: self._adjust_skill_value(name, -1)
+            )
+            minus_button.pack(side="left", padx=2)
+
+            # Entry do valor
+            value_var = ctk.StringVar()
+            self.skill_value_stringvars[skill_name] = value_var
+            value_var.trace_add("write", lambda n,idx,m,sv=value_var,sn=skill_name: self.on_skill_value_change(sn,sv))
+
+            value_entry = ctk.CTkEntry(
+                master=value_frame,
+                textvariable=value_var,
+                placeholder_text="0",
+                width=50,
+                border_color=COLORS["primary"]
+            )
+            value_entry.pack(side="left", padx=2)
+            self.skill_value_entries[skill_name] = value_entry
+
+            # Botão de aumentar
+            plus_button = ctk.CTkButton(
+                master=value_frame,
+                text="+",
+                width=25,
+                height=25,
+                fg_color="transparent",
+                border_color=COLORS["success"],
+                hover_color=COLORS["surface"],
+                text_color=COLORS["success"],
+                command=lambda name=skill_name: self._adjust_skill_value(name, 1)
+            )
+            plus_button.pack(side="left", padx=2)
+
+            # Label do atributo
+            attr_label = ctk.CTkLabel(
+                master=self.skills_scroll_frame,
+                text=f"({attr_abbrev})",
+                anchor="center",
+                width=60,
+                **STYLES["label"]["small"]
+            )
+            attr_label.grid(row=i, column=3, padx=5, pady=2)
+            self.skill_key_attribute_map[skill_name] = attr_key
+
+            # Botão de rolagem
+            roll_button = ctk.CTkButton(
+                master=self.skills_scroll_frame,
+                text="🎲",
+                width=30,
+                height=28,
+                corner_radius=8,
+                fg_color="transparent",
+                border_color=COLORS["primary"],
+                hover_color=COLORS["surface"],
+                text_color=COLORS["primary"],
+                command=lambda sn=skill_name: self.roll_specific_skill(sn)
+            )
+            roll_button.grid(row=i, column=4, padx=5, pady=2)
             self.skill_widgets[skill_name + "_roll_button"] = roll_button
 
     def setup_dice_roll_result_display_section(self) -> None:
-        """Configura a seção para exibir os resultados das rolagens de dados."""
-        result_display_frame = ctk.CTkFrame(self.main_frame)
-        result_display_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=(5,0), sticky="ew")
-        result_display_frame.columnconfigure(0, weight=0)
-        result_display_frame.columnconfigure(1, weight=1)
-        
-        self.dice_animation_label = ctk.CTkLabel(master=result_display_frame, text="", width=60, height=30, font=ctk.CTkFont(size=24, weight="bold"))
-        self.dice_animation_label.grid(row=0, column=0, padx=(10,5), pady=5, sticky="w")
-        
-        self.roll_result_label = ctk.CTkLabel(master=result_display_frame, text="Clique em 🎲 para testar uma perícia.", justify="left", height=30, anchor="w", font=ctk.CTkFont(size=14))
-        self.roll_result_label.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        """Configura a seção de exibição do resultado da rolagem com visual aprimorado."""
+        # Frame principal para o resultado da rolagem
+        self.dice_result_frame = ctk.CTkFrame(
+            self.main_frame,
+            fg_color=COLORS["surface"],
+            border_width=2,
+            border_color=COLORS["secondary"],
+            corner_radius=8
+        )
+        self.dice_result_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5, pady=(5, 0))
 
-    def roll_specific_skill(self, skill_name: str, associated_attribute_name_lookup: str) -> None:
+        # Grid para organizar os elementos
+        self.dice_result_frame.columnconfigure(0, weight=0)  # Animação (fixo)
+        self.dice_result_frame.columnconfigure(1, weight=1)  # Resultado (expansível)
+
+        # Label para animação do dado
+        self.dice_animation_label = ctk.CTkLabel(
+            master=self.dice_result_frame,
+            text="",
+            font=ctk.CTkFont(size=24, weight="bold"),
+            width=60,
+            anchor="center"
+        )
+        self.dice_animation_label.grid(row=0, column=0, padx=10, pady=10)
+
+        # Label para o resultado
+        self.roll_result_label = ctk.CTkLabel(
+            master=self.dice_result_frame,
+            text="",
+            anchor="w",
+            justify="left",
+            wraplength=600
+        )
+        self.roll_result_label.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+
+    def _format_roll_result(self, skill_name: str, skill_value: int, final_d20: int, 
+                          all_rolls: list, success_level: str, roll_type_text: str = "") -> str:
+        """Formata o resultado da rolagem com cores e estilos."""
+        # Define cores para diferentes níveis de sucesso
+        success_colors = {
+            SUCCESS_EXTREME: COLORS["success"],
+            SUCCESS_GOOD: COLORS["primary"],
+            SUCCESS_NORMAL: COLORS["secondary"],
+            FAILURE_NORMAL: COLORS["warning"],
+            FAILURE_EXTREME: COLORS["danger"]
+        }
+
+        # Formata as rolagens múltiplas
+        roll_details = f" (Rolagens: {', '.join(map(str, all_rolls))})" if len(all_rolls) > 1 else ""
+        
+        # Obtém a cor baseada no nível de sucesso
+        result_color = success_colors.get(success_level, COLORS["text"])
+
+        # Constrói o texto do resultado
+        lines = [
+            f"Perícia: {skill_name}",
+            f"Valor Total: {skill_value}",
+            f"d20: {final_d20}{roll_details}{roll_type_text}",
+            f"Resultado: {success_level}"
+        ]
+
+        return "\n".join(lines)
+
+    def _update_roll_result_display(self, formatted_result: str) -> None:
+        """Atualiza o display do resultado da rolagem."""
+        self.roll_result_label.configure(text=formatted_result)
+        
+        # Reativa todos os botões de rolagem após a animação
+        for widget_key in self.skill_widgets:
+            if widget_key.endswith("_roll_button"):
+                widget = self.skill_widgets[widget_key]
+                if isinstance(widget, ctk.CTkButton):
+                    widget.configure(state="normal")
+
+    def roll_specific_skill(self, skill_name: str) -> None:
         """Realiza um teste para uma perícia específica."""
+        # Obtém o valor da perícia da UI
         skill_val_str = self.skill_value_stringvars.get(skill_name, ctk.StringVar(value="0")).get()
         try:
             skill_value_to_test = int(skill_val_str)
         except ValueError:
-            skill_value_to_test = 0 # Padrão se o valor da perícia for inválido na UI
-
-        # Obtém o valor do atributo diretamente do objeto Personagem
-        attribute_value_to_test = self.personagem.atributos.get(associated_attribute_name_lookup, 0)
+            skill_value_to_test = 0  # Valor padrão se inválido
 
         # Desabilita todos os botões de rolagem durante a animação
         for widget_key in self.skill_widgets:
             if widget_key.endswith("_roll_button"):
                 widget = self.skill_widgets[widget_key]
-                if isinstance(widget, ctk.CTkButton): # Checagem de tipo para segurança
+                if isinstance(widget, ctk.CTkButton):
                     widget.configure(state="disabled")
-        
-        self.start_dice_roll_animation(attribute_value_to_test, skill_value_to_test, skill_name)
 
-    def start_dice_roll_animation(self, attribute_value: int, skill_value: int, skill_name_for_display: str = "Teste") -> None:
-        """Inicia a animação de rolagem de dados na UI."""
+        # Inicia a animação
+        self.start_dice_roll_animation(skill_value_to_test, skill_name)
+
+    def start_dice_roll_animation(self, skill_value: int, skill_name: str) -> None:
+        """Inicia a animação de rolagem de dados."""
         self.dice_animation_label.configure(text="")
-        self.roll_result_label.configure(text=f"Rolando {skill_name_for_display}...")
-        self.animate_dice(0, attribute_value, skill_value, skill_name_for_display)
+        self.roll_result_label.configure(text=f"Rolando {skill_name}...")
+        self.animate_dice(0, skill_value, skill_name)
 
-    def animate_dice(self, step: int, attribute_value: int, skill_value: int, skill_name_for_display: str) -> None:
+    def animate_dice(self, step: int, skill_value: int, skill_name: str) -> None:
         """Executa um passo da animação de rolagem de dados."""
-        animation_steps = 8
-        animation_interval = 60
-        if step < animation_steps:
+        if step < 8:  # 8 passos de animação
+            # Gera um número aleatório para a animação
             num = random.randint(1, 20)
             self.dice_animation_label.configure(text=str(num))
-            self.tab_widget.after(animation_interval, self.animate_dice, step + 1, attribute_value, skill_value, skill_name_for_display)
+            
+            # Calcula o intervalo da animação (mais rápido no início, mais lento no final)
+            animation_interval = 50 + (step * 25)  # 50ms -> 225ms
+            
+            # Agenda o próximo passo da animação
+            self.tab_widget.after(animation_interval, self.animate_dice, step + 1, skill_value, skill_name)
         else:
-            final_d20, all_rolls = perform_attribute_test_roll(attribute_value)
-            # O natural_roll_for_crit_check é o final_d20, pois perform_attribute_test_roll já considera Vant/Desvant
-            success_level = check_success(skill_value, final_d20, final_d20) 
-            
-            self.dice_animation_label.configure(text=str(final_d20))
-            
-            roll_details = f" (Rolagens: {all_rolls})" if len(all_rolls) > 1 else ""
-            num_dice_attr, roll_type_attr_key = get_dice_for_attribute_test(attribute_value)
-            roll_type_attr_text = ""
-            if roll_type_attr_key == ROLL_TYPE_ADVANTAGE:
-                roll_type_attr_text = " (Maior)"
-            elif roll_type_attr_key == ROLL_TYPE_DISADVANTAGE:
-                roll_type_attr_text = " (Menor)"
-            
-            attr_dice_info = f"{num_dice_attr}d20{roll_type_attr_text}"
-            
-            result_text_lines = [
-                f"Perícia: {skill_name_for_display} (Valor {skill_value})",
-                f"Atributo base: {attribute_value} -> {attr_dice_info}",
-                f"d20 Usado: {final_d20}{roll_details}",
-                f"Resultado: {success_level}"
-            ]
-            self.roll_result_label.configure(text="\n".join(result_text_lines))
+            # Realiza a rolagem final
+            final_d20, all_rolls = perform_attribute_test_roll(skill_value)
+            success_level = check_success(skill_value, final_d20, final_d20)
 
-            # Reabilita todos os botões de rolagem
-            for widget_key in self.skill_widgets:
-                if widget_key.endswith("_roll_button"):
-                    widget = self.skill_widgets[widget_key]
-                    if isinstance(widget, ctk.CTkButton):
-                        widget.configure(state="normal")
+            # Formata e exibe o resultado
+            formatted_result = self._format_roll_result(
+                skill_name=skill_name,
+                skill_value=skill_value,
+                final_d20=final_d20,
+                all_rolls=all_rolls,
+                success_level=success_level
+            )
+            self._update_roll_result_display(formatted_result)
+
+    def _update_current_stat_pv(self, string_var: ctk.StringVar) -> None:
+        """Atualiza os PV atuais no objeto personagem."""
+        try:
+            new_val = int(string_var.get())
+            self.personagem.pv_atuais = new_val  # O setter da property já faz a validação
+            self._update_stat_entry_color(self.pv_current_entry, new_val, self.personagem.pv_maximo)
+        except ValueError:
+            # Reverte para o valor atual do personagem em caso de entrada inválida
+            string_var.set(str(self.personagem.pv_atuais))
+
+    def _update_current_stat_pm(self, string_var: ctk.StringVar) -> None:
+        """Atualiza os PM atuais no objeto personagem."""
+        try:
+            new_val = int(string_var.get())
+            self.personagem.pm_atuais = new_val  # O setter da property já faz a validação
+            self._update_stat_entry_color(self.pm_current_entry, new_val, self.personagem.pm_maximo)
+        except ValueError:
+            # Reverte para o valor atual do personagem em caso de entrada inválida
+            string_var.set(str(self.personagem.pm_atuais))
+
+    def _update_current_stat_vigor(self, string_var: ctk.StringVar) -> None:
+        """Atualiza os pontos de Vigor atuais no objeto personagem."""
+        try:
+            new_val = int(string_var.get())
+            self.personagem.vigor_atuais = new_val  # O setter da property já faz a validação
+            self._update_stat_entry_color(self.vigor_current_entry, new_val, self.personagem.vigor_maximo)
+        except ValueError:
+            # Reverte para o valor atual do personagem em caso de entrada inválida
+            string_var.set(str(self.personagem.vigor_atuais))

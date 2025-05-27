@@ -280,17 +280,26 @@ class StoreAbilitiesTab:
                 )
                 var_escolha.set(habilidade_ja_escolhida)
                 
+                # Modifica a criação do checkbox para usar um frame com checkbox e label
+                chk_frame = ctk.CTkFrame(master=self.grupos_renderizados[grupo_escolha]["frame"], fg_color="transparent")
+                chk_frame.pack(anchor="w", padx=5, pady=2, fill="x")
+
                 chk = ctk.CTkCheckBox(
-                    master=self.grupos_renderizados[grupo_escolha]["frame"], 
-                    text=f"{ability_data.get('nome')} - {ability_data.get('descricao', '')[:60]}... (Custo: {ability_data.get('custo','N/A')})", 
-                    wraplength=500,
-                    justify="left"
-                )
-                chk.configure(
+                    master=chk_frame, 
+                    text="",
                     variable=var_escolha,
                     command=lambda v=var_escolha, ab_data=ability_data, g_nome=grupo_escolha: self.handle_ability_choice(v, ab_data, g_nome)
                 )
-                chk.pack(anchor="w", padx=5, pady=2)
+                chk.pack(side="left", padx=(5,10))
+
+                # Label separado para o texto da habilidade
+                ability_label = ctk.CTkLabel(
+                    master=chk_frame,
+                    text=f"{ability_data.get('nome')} - {ability_data.get('descricao', '')[:60]}... (Custo: {ability_data.get('custo','N/A')})",
+                    wraplength=500,
+                    justify="left"
+                )
+                ability_label.pack(side="left", fill="x", expand=True)
                 
                 # Adiciona a referência do checkbox e sua variável aos dados do grupo
                 self.grupos_renderizados[grupo_escolha]["opcoes_data"].append({
@@ -310,7 +319,7 @@ class StoreAbilitiesTab:
                     nome_display += f" (Nível {ability_data.get('nivel_req')})"
 
                 ctk.CTkLabel(master=frame_habilidade, text=nome_display, anchor="w", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=5, pady=2, sticky="w")
-                ctk.CTkLabel(master=frame_habilidade, text=f"{ability_data.get('descricao', '')[:80]}...", anchor="w", wraplength=350, justify="left").grid(row=0, column=1, padx=5, pady=2, sticky="ew") # Aumentado wraplength
+                ctk.CTkLabel(master=frame_habilidade, text=f"{ability_data.get('descricao', '')[:80]}...", anchor="w", wraplength=350).grid(row=0, column=1, padx=5, pady=2, sticky="ew") # Aumentado wraplength
                 
                 habilidade_ja_adquirida = any(h.get('nome') == ability_data.get('nome') for h in self.personagem.magias_habilidades if h.get("grupo_escolha_origem") is None) # Checa apenas não-agrupadas
                 
