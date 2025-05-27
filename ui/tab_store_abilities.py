@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
+import tkinter
 
 # Supondo que Personagem e dados da loja/habilidades estão acessíveis
 # from core.character import Personagem # Para type hint
@@ -272,7 +273,7 @@ class StoreAbilitiesTab:
                     
                     self.grupos_renderizados[grupo_escolha] = {"frame": frame_grupo, "vars": [], "limite": limite, "opcoes_data": []}
                 
-                var_escolha = ctk.BooleanVar()
+                var_escolha = tkinter.BooleanVar()
                 habilidade_ja_escolhida = any(
                     h.get('nome') == ability_data.get('nome') and h.get('grupo_escolha_origem') == grupo_escolha 
                     for h in self.personagem.magias_habilidades
@@ -282,15 +283,21 @@ class StoreAbilitiesTab:
                 chk = ctk.CTkCheckBox(
                     master=self.grupos_renderizados[grupo_escolha]["frame"], 
                     text=f"{ability_data.get('nome')} - {ability_data.get('descricao', '')[:60]}... (Custo: {ability_data.get('custo','N/A')})", 
+                    wraplength=500,
+                    justify="left"
+                )
+                chk.configure(
                     variable=var_escolha,
-                    wraplength=500, # Aumentar para melhor visualização
-                    justify="left",
-                    # Passa o nome do grupo para o handler
                     command=lambda v=var_escolha, ab_data=ability_data, g_nome=grupo_escolha: self.handle_ability_choice(v, ab_data, g_nome)
                 )
-                chk.pack(anchor="w", padx=15, pady=1, fill="x")
-                self.grupos_renderizados[grupo_escolha]["vars"].append(var_escolha)
-                self.grupos_renderizados[grupo_escolha]["opcoes_data"].append({"checkbox": chk, "var": var_escolha, "ability_data": ability_data})
+                chk.pack(anchor="w", padx=5, pady=2)
+                
+                # Adiciona a referência do checkbox e sua variável aos dados do grupo
+                self.grupos_renderizados[grupo_escolha]["opcoes_data"].append({
+                    "checkbox": chk,
+                    "var": var_escolha,
+                    "ability_data": ability_data
+                })
             
             else: # Habilidades não agrupadas
                 frame_habilidade = ctk.CTkFrame(self.abilities_scroll_frame)
@@ -338,7 +345,7 @@ class StoreAbilitiesTab:
             self.update_checkbox_states_for_group(nome_grupo)
 
 
-    def handle_ability_choice(self, bool_var: ctk.BooleanVar, ability_data: Dict[str, Any], group_name: str) -> None:
+    def handle_ability_choice(self, bool_var: tkinter.BooleanVar, ability_data: Dict[str, Any], group_name: str) -> None:
         """Lida com a seleção/desseleção de uma habilidade de um grupo."""
         dados_grupo = self.grupos_renderizados.get(group_name)
         if not dados_grupo:
@@ -389,7 +396,7 @@ class StoreAbilitiesTab:
         for item_info in group_data_dict.get("opcoes_data", []):
             checkbox_widget = item_info.get("checkbox")
             var_atual = item_info.get("var") # A BooleanVar associada
-            if isinstance(checkbox_widget, ctk.CTkCheckBox) and isinstance(var_atual, ctk.BooleanVar):
+            if isinstance(checkbox_widget, ctk.CTkCheckBox) and isinstance(var_atual, tkinter.BooleanVar):
                 if escolhidas_count >= limite and not var_atual.get(): # Se limite atingido e esta não está marcada
                     checkbox_widget.configure(state="disabled")
                 else:

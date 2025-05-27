@@ -1,0 +1,15 @@
+{
+    "name": "Ocean",
+    "colors": {
+        "primary": "#00B4DB",
+        "secondary": "#0083B0",
+        "danger": "#FF5252",
+        "warning": "#FFB300",
+        "info": "#40C4FF",
+        "success": "#00E676",
+        "background": "#0A192F",
+        "surface": "#172A45",
+        "text": "#8BE9FD",
+        "text_secondary": "#64FFDA"
+    }
+} 

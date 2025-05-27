@@ -12,6 +12,25 @@ from ui.tab_inventory import InventoryTab
 from ui.tab_notes import NotesTab # Importado para consistência
 from ui.tab_dice_roller_generic import DiceRollerGenericTab
 from ui.tab_store_abilities import StoreAbilitiesTab
+from ui.themes import ThemeManager
+
+# Constantes de cores e temas
+COLORS = {
+    "primary": "#3498db",
+    "secondary": "#2ecc71",
+    "danger": "#e74c3c",
+    "warning": "#f1c40f",
+    "info": "#3498db",
+    "success": "#2ecc71",
+    "background": "#2c3e50",
+    "surface": "#34495e",
+    "text": "#ecf0f1",
+    "text_secondary": "#95a5a6"
+}
+
+# Configurações de animação
+ANIMATION_SPEED = 300  # milissegundos
+HOVER_ANIMATION_SPEED = 150  # milissegundos
 
 # Definindo SUBCLASS_OPTIONS fora da classe se for usado apenas para inicialização
 # ou se for uma constante global para a UI.
@@ -26,6 +45,43 @@ SUBCLASS_OPTIONS: Dict[str, List[str]] = {
 for class_name_key in SUBCLASS_OPTIONS:
     if SUBCLASS_OPTIONS[class_name_key] and SUBCLASS_OPTIONS[class_name_key][0] != "":
         SUBCLASS_OPTIONS[class_name_key].insert(0, "")
+
+
+class ToolTip:
+    """Classe para criar tooltips personalizados."""
+    
+    def __init__(self, widget: ctk.CTkBaseClass, text: str):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind('<Enter>', self.show_tooltip)
+        self.widget.bind('<Leave>', self.hide_tooltip)
+    
+    def show_tooltip(self, event=None):
+        x, y, _, _ = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 25
+        
+        self.tooltip_window = tkinter.Toplevel(self.widget)
+        self.tooltip_window.wm_overrideredirect(True)
+        self.tooltip_window.wm_geometry(f"+{x}+{y}")
+        
+        label = tkinter.Label(
+            self.tooltip_window,
+            text=self.text,
+            justify='left',
+            background="#34495e",
+            foreground="#ecf0f1",
+            relief='solid',
+            borderwidth=1,
+            font=("Helvetica", 10)
+        )
+        label.pack()
+    
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
 
 
 class AppUI:
@@ -43,6 +99,7 @@ class AppUI:
     new_char_button: ctk.CTkButton
     feedback_label: ctk.CTkLabel
     tab_view: ctk.CTkTabview
+    theme_manager: ThemeManager
 
     # Widgets das abas
     tab_principal_widget: ctk.CTkFrame # O tipo real é CTkFrame retornado por tab_view.add()
@@ -71,45 +128,168 @@ class AppUI:
     def __init__(self, root: ctk.CTk):
         self.root = root
         self.root.title("Ficha de Personagem Elaria RPG")
-        self.root.geometry("1280x720")
+        
+        # Inicializa o gerenciador de temas
+        self.theme_manager = ThemeManager()
+        
+        # Configurações de tema e aparência
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("dark-blue")
+        
+        # Configurar tamanho e posição da janela
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        window_width = 1280
+        window_height = 720
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        self.root.minsize(1280, 720)
+        
+        # Configurar ícone da janela
+        try:
+            self.root.iconbitmap("assets/icon.ico")
+        except:
+            pass
+            
         self.personagem_atual = Personagem()
 
-        self.main_frame = ctk.CTkFrame(self.root)
-        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # Criar menu de temas
+        self._create_theme_menu()
 
-        # Frame para operações de arquivo
-        self.file_ops_frame = ctk.CTkFrame(self.main_frame)
+        # Frame principal com animação de fade in
+        self.main_frame = ctk.CTkFrame(self.root, fg_color=self.theme_manager.get_theme()["colors"]["background"])
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.main_frame.pack_propagate(False)  # Previne redimensionamento automático
+        
+        # Animação de fade in
+        self.main_frame.configure(fg_color="transparent")
+        def fade_in():
+            self.main_frame.configure(fg_color=self.theme_manager.get_theme()["colors"]["background"])
+        self.root.after(100, fade_in)
+
+        # Frame para operações de arquivo com animação
+        self.file_ops_frame = ctk.CTkFrame(self.main_frame, fg_color=self.theme_manager.get_theme()["colors"]["surface"])
         self.file_ops_frame.pack(fill="x", pady=(0, 10))
 
-        self.save_button = ctk.CTkButton(self.file_ops_frame, text="Salvar Ficha", command=self.salvar_ficha)
-        self.save_button.pack(side="left", padx=10, pady=5)
-        self.load_button = ctk.CTkButton(self.file_ops_frame, text="Carregar Ficha", command=self.carregar_ficha)
-        self.load_button.pack(side="left", padx=10, pady=5)
-        self.new_char_button = ctk.CTkButton(self.file_ops_frame, text="Nova Ficha", command=self.nova_ficha)
-        self.new_char_button.pack(side="left", padx=10, pady=5)
-        self.feedback_label = ctk.CTkLabel(self.file_ops_frame, text="")
-        self.feedback_label.pack(side="left", padx=10, pady=5)
+        # Frame para botões com efeito de elevação
+        buttons_frame = ctk.CTkFrame(self.file_ops_frame, fg_color="transparent")
+        buttons_frame.pack(side="left", padx=10, pady=5)
 
-        # Configuração das Abas
-        self.tab_view = ctk.CTkTabview(self.main_frame, anchor="nw") # Anchor para alinhar abas no topo-esquerda
-        self.tab_view.pack(fill="both", expand=True)
+        # Botões com ícones, cores e tooltips
+        self.new_char_button = ctk.CTkButton(
+            buttons_frame,
+            text="Nova Ficha",
+            command=self.nova_ficha,
+            fg_color=self.theme_manager.get_theme()["colors"]["secondary"],
+            hover_color="#27ae60",
+            width=120,
+            height=32,
+            corner_radius=8
+        )
+        self.new_char_button.pack(side="left", padx=(0, 5))
+        ToolTip(self.new_char_button, "Criar uma nova ficha de personagem em branco")
 
-        self.tab_principal_widget = self.tab_view.add("Principal")
-        self.tab_attrs_skills_widget = self.tab_view.add("Atributos & Perícias")
-        self.tab_combat_widget = self.tab_view.add("Combate")
-        self.tab_magia_widget = self.tab_view.add("Magia")
-        self.tab_inventario_widget = self.tab_view.add("Inventário")
-        self.tab_loja_habilidades_widget = self.tab_view.add("Loja & Habilidades")
-        self.tab_rolador_widget = self.tab_view.add("Rolador de Dados")
-        self.tab_notas_widget = self.tab_view.add("Notas")
-        
-        self.tab_view.set("Principal") # Define a aba inicial
+        self.load_button = ctk.CTkButton(
+            buttons_frame,
+            text="Carregar Ficha",
+            command=self.carregar_ficha,
+            fg_color=self.theme_manager.get_theme()["colors"]["primary"],
+            hover_color="#2980b9",
+            width=120,
+            height=32,
+            corner_radius=8
+        )
+        self.load_button.pack(side="left", padx=5)
+        ToolTip(self.load_button, "Carregar uma ficha de personagem existente")
+
+        self.save_button = ctk.CTkButton(
+            buttons_frame,
+            text="Salvar Ficha",
+            command=self.salvar_ficha,
+            fg_color=self.theme_manager.get_theme()["colors"]["danger"],
+            hover_color="#c0392b",
+            width=120,
+            height=32,
+            corner_radius=8
+        )
+        self.save_button.pack(side="left", padx=5)
+        ToolTip(self.save_button, "Salvar a ficha atual em um arquivo")
+
+        # Frame para feedback com animação
+        feedback_frame = ctk.CTkFrame(self.file_ops_frame, fg_color="transparent")
+        feedback_frame.pack(side="left", fill="x", expand=True, padx=10, pady=5)
+
+        self.feedback_label = ctk.CTkLabel(
+            feedback_frame,
+            text="",
+            font=("Helvetica", 12),
+            text_color=self.theme_manager.get_theme()["colors"]["text_secondary"]
+        )
+        self.feedback_label.pack(side="left", padx=10)
+
+        # Configuração das Abas com novo visual
+        self.tab_view = ctk.CTkTabview(
+            self.main_frame,
+            anchor="nw",
+            segmented_button_fg_color=self.theme_manager.get_theme()["colors"]["surface"],
+            segmented_button_selected_color=self.theme_manager.get_theme()["colors"]["primary"],
+            segmented_button_selected_hover_color="#2980b9",
+            segmented_button_unselected_color=self.theme_manager.get_theme()["colors"]["surface"],
+            segmented_button_unselected_hover_color="#34495e"
+        )
+        self.tab_view.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Criação das abas com ícones e tooltips
+        tabs_info = {
+            "Principal": "Informações básicas do personagem",
+            "Atributos & Perícias": "Gerenciar atributos e perícias do personagem",
+            "Combate": "Configurações e estatísticas de combate",
+            "Magia": "Magias e habilidades mágicas",
+            "Inventário": "Gerenciar itens e equipamentos",
+            "Loja & Habilidades": "Comprar itens e habilidades",
+            "Rolador de Dados": "Realizar rolagens de dados",
+            "Notas": "Anotações sobre o personagem"
+        }
+
+        # Criar as abas e armazenar referências
+        self.tab_widgets = {}
+        for tab_name in tabs_info.keys():
+            tab_widget = self.tab_view.add(tab_name)
+            self.tab_widgets[tab_name] = tab_widget
+            
+            # Adicionar tooltip ao botão da aba usando o widget pai
+            tab_button = self.tab_view._segmented_button.winfo_children()[len(self.tab_widgets) - 1]
+            if isinstance(tab_button, (ctk.CTkButton, tkinter.Button)):
+                ToolTip(tab_button, tabs_info[tab_name])
+
+        # Atribuir as referências das abas aos atributos da classe
+        self.tab_principal_widget = self.tab_widgets["Principal"]
+        self.tab_attrs_skills_widget = self.tab_widgets["Atributos & Perícias"]
+        self.tab_combat_widget = self.tab_widgets["Combate"]
+        self.tab_magia_widget = self.tab_widgets["Magia"]
+        self.tab_inventario_widget = self.tab_widgets["Inventário"]
+        self.tab_loja_habilidades_widget = self.tab_widgets["Loja & Habilidades"]
+        self.tab_rolador_widget = self.tab_widgets["Rolador de Dados"]
+        self.tab_notas_widget = self.tab_widgets["Notas"]
+
+        # Configurar cores de fundo para cada aba
+        for tab in self.tab_widgets.values():
+            tab.configure(fg_color=self.theme_manager.get_theme()["colors"]["background"])
+
+        self.tab_view.set("Principal")
 
         self.principal_stringvars = {}
         self.principal_widgets = {}
         self._principal_var_traces_tcl_names = {}
 
-        self.setup_principal_tab_widgets(self.tab_principal_widget)
+        # Configurar widgets da aba principal com animação de fade in
+        def setup_principal_delayed():
+            self.setup_principal_tab_widgets(self.tab_principal_widget)
+            self.atualizar_ui_completa(primeira_carga=True)
+        
+        self.root.after(ANIMATION_SPEED, setup_principal_delayed)
         
         # Instanciação das classes das abas
         self.attributes_skills_tab = AttributesSkillsTab(self.tab_attrs_skills_widget, self.personagem_atual)
@@ -119,19 +299,114 @@ class AppUI:
         self.store_abilities_tab = StoreAbilitiesTab(self.tab_loja_habilidades_widget, self.personagem_atual, self)
         self.dice_roller_generic_tab = DiceRollerGenericTab(self.tab_rolador_widget)
         self.notes_tab = NotesTab(self.tab_notas_widget, self.personagem_atual)
-        
-        self.atualizar_ui_completa(primeira_carga=True)
 
-    def show_feedback_message(self, message: str, duration: int = 3000) -> None:
-        """Exibe uma mensagem de feedback temporária na UI."""
-        self.feedback_label.configure(text=message)
-        self.root.after(duration, lambda: self.feedback_label.configure(text=""))
+    def _create_theme_menu(self) -> None:
+        """Cria o menu de temas na barra de menu."""
+        menubar = tkinter.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        theme_menu = tkinter.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Temas", menu=theme_menu)
+        
+        available_themes = self.theme_manager.get_available_themes()
+        for theme_id, theme_name in available_themes.items():
+            theme_menu.add_command(
+                label=theme_name,
+                command=lambda t=theme_id: self._change_theme(t)
+            )
+
+    def _change_theme(self, theme_name: str) -> None:
+        """Muda o tema do aplicativo."""
+        if self.theme_manager.set_theme(theme_name):
+            theme = self.theme_manager.get_theme()
+            colors = theme["colors"]
+            
+            # Atualiza cores dos frames principais
+            self.main_frame.configure(fg_color=colors["background"])
+            self.file_ops_frame.configure(fg_color=colors["surface"])
+            
+            # Atualiza cores dos botões
+            self.new_char_button.configure(
+                fg_color=colors["secondary"],
+                hover_color="#27ae60"
+            )
+            self.load_button.configure(
+                fg_color=colors["primary"],
+                hover_color="#2980b9"
+            )
+            self.save_button.configure(
+                fg_color=colors["danger"],
+                hover_color="#c0392b"
+            )
+            
+            # Atualiza cores do feedback
+            self.feedback_label.configure(text_color=colors["text_secondary"])
+            
+            # Atualiza cores das abas
+            self.tab_view.configure(
+                segmented_button_fg_color=colors["surface"],
+                segmented_button_selected_color=colors["primary"],
+                segmented_button_unselected_color=colors["surface"]
+            )
+            
+            # Atualiza cores de fundo das abas
+            for tab in self.tab_widgets.values():
+                tab.configure(fg_color=colors["background"])
+            
+            # Mostra feedback da mudança de tema
+            self.show_feedback_message(f"Tema alterado para {theme['name']}", "info", 2000)
+
+    def show_feedback_message(self, message: str, message_type: str = "info", duration: int = 3000) -> None:
+        """
+        Exibe uma mensagem de feedback temporária na UI com animação e cores baseadas no tipo.
+        
+        Args:
+            message: A mensagem a ser exibida
+            message_type: O tipo de mensagem ('success', 'error', 'warning', 'info')
+            duration: Duração em milissegundos para exibir a mensagem
+        """
+        # Definir cores baseadas no tipo de mensagem
+        colors = {
+            "success": COLORS["success"],
+            "error": COLORS["danger"],
+            "warning": COLORS["warning"],
+            "info": COLORS["info"]
+        }
+        
+        # Configurar a cor do texto baseado no tipo de mensagem
+        text_color = colors.get(message_type, colors["info"])
+        
+        # Animação de fade in
+        self.feedback_label.configure(text="")
+        
+        def fade_in():
+            self.feedback_label.configure(
+                text=message,
+                text_color=text_color,
+                font=("Helvetica", 12, "bold")
+            )
+        
+        # Função para fade out
+        def fade_out():
+            self.feedback_label.configure(
+                text_color=COLORS["text_secondary"],
+                font=("Helvetica", 12)
+            )
+            
+            def clear_message():
+                self.feedback_label.configure(text="")
+            
+            self.root.after(HOVER_ANIMATION_SPEED, clear_message)
+        
+        # Agendar as animações
+        self.root.after(50, fade_in)  # Pequeno delay antes do fade in
+        self.root.after(duration - HOVER_ANIMATION_SPEED, fade_out)  # Inicia fade out antes do fim
 
     def nova_ficha(self) -> None:
         """Cria uma nova ficha de personagem em branco e atualiza a UI."""
         self.personagem_atual = Personagem()
         self.atualizar_ui_completa(primeira_carga=True) # Sinaliza que é como uma primeira carga
-        self.show_feedback_message("Nova ficha limpa carregada.", 2000)
+        self.show_feedback_message("Nova ficha limpa carregada.", "success", 2000)
 
     def _on_principal_var_change(self, attr_name: str, string_var_instance: ctk.StringVar,
                                  tk_var_name: str, tk_index: str, tk_mode: str) -> None:
@@ -235,82 +510,158 @@ class AppUI:
                 nivel_var.set(str(self.personagem_atual.nivel)) # Reverte em caso de erro
 
     def setup_principal_tab_widgets(self, tab_widget: ctk.CTkFrame) -> None:
-        """Configura os widgets para a aba 'Principal'."""
-        content_frame = ctk.CTkFrame(tab_widget, fg_color="transparent") # Usar fg_color
-        content_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        content_frame.columnconfigure(0, weight=1); content_frame.columnconfigure(1, weight=2)
-        content_frame.columnconfigure(2, weight=1); content_frame.columnconfigure(3, weight=2)
+        """Configura os widgets para a aba 'Principal' com animações e efeitos visuais."""
+        content_frame = ctk.CTkFrame(tab_widget, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        content_frame.columnconfigure(0, weight=1)
+        content_frame.columnconfigure(1, weight=2)
+        content_frame.columnconfigure(2, weight=1)
+        content_frame.columnconfigure(3, weight=2)
         
-        racas_opcoes = ["", "Alari", "Roknar", "Kain", "Faelan", "Celeres", "Aurien", "Vesperi"] # [cite: 104]
-        classes_opcoes = ["", CLASSE_EVOCADOR, CLASSE_TITA, CLASSE_SENTINELA, CLASSE_ELO] # [cite: 235]
-        origens_opcoes = ["", "Sobrevivente do Círculo de Brasas", "Guarda de Harmonia", "Iniciado das Florestas", "Erudito da Grande Biblioteca", "Artista Itinerante", "Veterano das Guerras"] # [cite: 565]
-        divindades_opcoes = ["", "Ignis", "Ondina", "Terrus", "Zephyrus", "Lumina", "Noctus", "Nenhum"] # [cite: 614, 618, 622, 627, 631, 636]
+        racas_opcoes = ["", "Alari", "Roknar", "Kain", "Faelan", "Celeres", "Aurien", "Vesperi"]
+        classes_opcoes = ["", CLASSE_EVOCADOR, CLASSE_TITA, CLASSE_SENTINELA, CLASSE_ELO]
+        origens_opcoes = ["", "Sobrevivente do Círculo de Brasas", "Guarda de Harmonia", "Iniciado das Florestas", 
+                         "Erudito da Grande Biblioteca", "Artista Itinerante", "Veterano das Guerras"]
+        divindades_opcoes = ["", "Ignis", "Ondina", "Terrus", "Zephyrus", "Lumina", "Noctus", "Nenhum"]
         
         initial_subclass_options = SUBCLASS_OPTIONS.get(self.personagem_atual.classe_principal, [""])
 
-        fields_data: List[Tuple[str, str, str, List[str]]] = [
-            ("Nome do Personagem:", "nome_personagem", "entry", []),
-            ("Nome do Jogador:", "nome_jogador", "entry", []),
-            ("Raça:", "raca", "option", racas_opcoes),
-            ("Classe Principal:", "classe_principal", "option", classes_opcoes),
-            ("Sub-classe:", "sub_classe", "option", initial_subclass_options),
-            ("Nível:", "nivel", "level_adjust", []),
-            ("Origem:", "origem", "option", origens_opcoes),
-            ("Divindade/Patrono:", "divindade_patrono", "option", divindades_opcoes),
-            ("Tendência (Alinhamento):", "tendencia", "entry", []),
+        fields_data = [
+            ("Nome do Personagem:", "nome_personagem", "entry", [], "Nome completo do seu personagem"),
+            ("Nome do Jogador:", "nome_jogador", "entry", [], "Seu nome como jogador"),
+            ("Raça:", "raca", "option", racas_opcoes, "Escolha a raça do seu personagem"),
+            ("Classe Principal:", "classe_principal", "option", classes_opcoes, "Escolha a classe principal do personagem"),
+            ("Sub-classe:", "sub_classe", "option", initial_subclass_options, "Especialização da classe principal"),
+            ("Nível:", "nivel", "level_adjust", [], "Nível atual do personagem"),
+            ("Origem:", "origem", "option", origens_opcoes, "Background do personagem"),
+            ("Divindade/Patrono:", "divindade_patrono", "option", divindades_opcoes, "Divindade ou patrono do personagem"),
+            ("Tendência (Alinhamento):", "tendencia", "entry", [], "Alinhamento moral do personagem"),
         ]
+        
+        # Função para criar widget com animação de fade in
+        def create_widget_with_animation(row: int, col: int, widget: ctk.CTkBaseClass, delay: int):
+            widget.grid(row=row, column=col, padx=(0,10), pady=5, sticky="ew")
+            widget.grid_remove()  # Esconde inicialmente
+            
+            def show_widget():
+                widget.grid()
+            
+            content_frame.after(delay, show_widget)
         
         row_count_col1 = 0
         row_count_col2 = 0
-        for i, (label_text, attr_name, widget_type, options) in enumerate(fields_data):
+        
+        for i, (label_text, attr_name, widget_type, options, tooltip_text) in enumerate(fields_data):
+            delay = i * 100  # Atraso progressivo para cada widget
+            
             target_column_label_idx = 0
             target_column_entry_idx = 1
             current_row_for_field = 0
-            if i % 2 == 0: # Coluna da esquerda
+            
+            if i % 2 == 0:
                 row_count_col1 += 1
                 current_row_for_field = row_count_col1
-            else: # Coluna da direita
+            else:
                 target_column_label_idx = 2
                 target_column_entry_idx = 3
                 row_count_col2 += 1
                 current_row_for_field = row_count_col2
             
-            label = ctk.CTkLabel(master=content_frame, text=label_text, anchor="e")
-            label.grid(row=current_row_for_field, column=target_column_label_idx, padx=(10,5), pady=5, sticky="e")
+            # Label com estilo melhorado
+            label = ctk.CTkLabel(
+                master=content_frame,
+                text=label_text,
+                anchor="e",
+                font=("Helvetica", 12),
+                text_color=COLORS["text"]
+            )
+            create_widget_with_animation(current_row_for_field, target_column_label_idx, label, delay)
             
             current_field_var = ctk.StringVar()
             self.principal_stringvars[attr_name] = current_field_var
             
-            # Função fábrica para o callback do trace, capturando as variáveis corretas
             def create_trace_callback(p_atr: str, sv: ctk.StringVar) -> Callable[[str, str, str], None]:
                 return lambda tk_var_name, tk_index, tk_mode: self._on_principal_var_change(p_atr, sv, tk_var_name, tk_index, tk_mode)
-
+            
             trace_id_tcl = current_field_var.trace_add("write", create_trace_callback(attr_name, current_field_var))
             self._principal_var_traces_tcl_names[attr_name] = trace_id_tcl
             
-            widget: Optional[ctk.CTkBaseClass] = None # Definindo tipo para mypy
+            widget: Optional[ctk.CTkBaseClass] = None
+            
             if widget_type == "entry":
-                widget = ctk.CTkEntry(master=content_frame, placeholder_text=label_text.replace(":", ""), textvariable=current_field_var)
+                widget = ctk.CTkEntry(
+                    master=content_frame,
+                    placeholder_text=label_text.replace(":", ""),
+                    textvariable=current_field_var,
+                    height=32,
+                    font=("Helvetica", 12),
+                    corner_radius=8,
+                    border_color=COLORS["primary"]
+                )
+            
             elif widget_type == "option":
                 current_options_for_menu = options
-                if attr_name == "sub_classe": # Subclasse precisa de opções dinâmicas
-                     current_options_for_menu = initial_subclass_options
-                widget = ctk.CTkOptionMenu(master=content_frame, values=current_options_for_menu, variable=current_field_var, dynamic_resizing=False)
+                if attr_name == "sub_classe":
+                    current_options_for_menu = initial_subclass_options
+                widget = ctk.CTkOptionMenu(
+                    master=content_frame,
+                    values=current_options_for_menu,
+                    variable=current_field_var,
+                    dynamic_resizing=False,
+                    height=32,
+                    font=("Helvetica", 12),
+                    corner_radius=8,
+                    button_color=COLORS["primary"],
+                    button_hover_color="#2980b9",
+                    fg_color=COLORS["surface"]
+                )
+            
             elif widget_type == "level_adjust":
                 level_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-                minus_button = ctk.CTkButton(master=level_frame, text="-", width=28, height=28, command=lambda: self._adjust_nivel(-1))
+                
+                minus_button = ctk.CTkButton(
+                    master=level_frame,
+                    text="-",
+                    width=32,
+                    height=32,
+                    command=lambda: self._adjust_nivel(-1),
+                    corner_radius=8,
+                    fg_color=COLORS["danger"],
+                    hover_color="#c0392b"
+                )
                 minus_button.pack(side="left", padx=(0,2))
-                # Usar CTkEntry para exibir e permitir edição direta do nível também
-                level_entry = ctk.CTkEntry(master=level_frame, textvariable=current_field_var, width=40, height=28, justify="center")
+                
+                level_entry = ctk.CTkEntry(
+                    master=level_frame,
+                    textvariable=current_field_var,
+                    width=50,
+                    height=32,
+                    justify="center",
+                    font=("Helvetica", 12, "bold"),
+                    corner_radius=8,
+                    border_color=COLORS["primary"]
+                )
                 level_entry.pack(side="left", padx=2)
-                self.principal_widgets[attr_name + "_entry"] = level_entry # Guardar ref se precisar
-                plus_button = ctk.CTkButton(master=level_frame, text="+", width=28, height=28, command=lambda: self._adjust_nivel(1))
+                self.principal_widgets[attr_name + "_entry"] = level_entry
+                
+                plus_button = ctk.CTkButton(
+                    master=level_frame,
+                    text="+",
+                    width=32,
+                    height=32,
+                    command=lambda: self._adjust_nivel(1),
+                    corner_radius=8,
+                    fg_color=COLORS["success"],
+                    hover_color="#27ae60"
+                )
                 plus_button.pack(side="left", padx=(2,0))
-                widget = level_frame # O frame é o widget principal aqui
+                
+                widget = level_frame
             
             if widget:
-                widget.grid(row=current_row_for_field, column=target_column_entry_idx, padx=(0,10), pady=5, sticky="ew")
+                create_widget_with_animation(current_row_for_field, target_column_entry_idx, widget, delay + 50)
                 self.principal_widgets[attr_name] = widget
+                ToolTip(widget, tooltip_text)
 
     def salvar_ficha(self) -> None:
         """Salva os dados do personagem atual em um arquivo JSON."""
@@ -320,15 +671,15 @@ class AppUI:
             title="Salvar Ficha de Personagem Elaria"
         )
         if not filepath:
-            self.show_feedback_message("Salvar cancelado.", 2000)
+            self.show_feedback_message("Salvar cancelado.", "warning", 2000)
             return
         try:
             char_data = self.personagem_atual.to_dict()
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(char_data, f, ensure_ascii=False, indent=4)
-            self.show_feedback_message(f"Ficha salva: {filepath.split('/')[-1]}", 3000)
+            self.show_feedback_message(f"Ficha salva: {filepath.split('/')[-1]}", "success", 3000)
         except Exception as e:
-            self.show_feedback_message(f"Erro ao salvar: {e}", 4000)
+            self.show_feedback_message(f"Erro ao salvar: {e}", "error", 4000)
             print(f"Erro ao salvar ficha: {e}") # Log para debug
             messagebox.showerror("Erro ao Salvar", f"Ocorreu um erro ao salvar a ficha:\n{e}")
 
@@ -340,16 +691,16 @@ class AppUI:
             title="Carregar Ficha de Personagem Elaria"
         )
         if not filepath:
-            self.show_feedback_message("Carregar cancelado.", 2000)
+            self.show_feedback_message("Carregar cancelado.", "warning", 2000)
             return
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 char_data = json.load(f)
             self.personagem_atual = Personagem.from_dict(char_data)
             self.atualizar_ui_completa(primeira_carga=False) # Não é a primeira carga do app, mas é de uma ficha
-            self.show_feedback_message(f"Ficha carregada: {filepath.split('/')[-1]}", 3000)
+            self.show_feedback_message(f"Ficha carregada: {filepath.split('/')[-1]}", "success", 3000)
         except Exception as e:
-            self.show_feedback_message(f"Erro ao carregar: {e}", 4000)
+            self.show_feedback_message(f"Erro ao carregar: {e}", "error", 4000)
             print(f"Erro ao carregar ficha: {e}") # Log para debug
             messagebox.showerror("Erro ao Carregar", f"Ocorreu um erro ao carregar a ficha:\n{e}")
 

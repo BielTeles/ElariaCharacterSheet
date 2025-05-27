@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import random
 from typing import Dict, Any, Optional
+import tkinter
 
 # Assumindo que Personagem e as funções de dice_roller estão acessíveis
 # (serão importadas corretamente quando a AppUI for instanciada)
@@ -361,7 +362,7 @@ class AttributesSkillsTab:
         if self.personagem.pericias_valores.get(skill_name) != new_value_for_model:
             self.personagem.atualizar_pericia_valor(skill_name, new_value_for_model)
 
-    def on_skill_trained_change(self, skill_name: str, boolean_var_instance: ctk.BooleanVar, *args) -> None:
+    def on_skill_trained_change(self, skill_name: str, boolean_var_instance: tkinter.BooleanVar, *args) -> None:
         """
         Callback acionado quando o checkbox "treinada" de uma perícia muda.
         Atualiza o modelo e o valor da perícia na UI (mínimo 1 se treinada, 0 se não).
@@ -377,16 +378,16 @@ class AttributesSkillsTab:
             try:
                 current_skill_val = int(current_skill_val_str)
             except ValueError:
-                current_skill_val = 0 # Ou um padrão se a string for inválida
+                current_skill_val = 0
 
             new_val_for_ui: Optional[str] = None
             if is_trained_ui and current_skill_val < 1:
                 new_val_for_ui = "1"
-            elif not is_trained_ui and current_skill_val != 0: # Se desmarcou e valor não é 0
+            elif not is_trained_ui and current_skill_val != 0:
                 new_val_for_ui = "0"
             
             if new_val_for_ui is not None and value_var.get() != new_val_for_ui:
-                value_var.set(new_val_for_ui) # Isso chamará on_skill_value_change
+                value_var.set(new_val_for_ui)
 
     def setup_skills_section(self) -> None:
         """Configura os widgets para a lista de Perícias."""
@@ -424,9 +425,10 @@ class AttributesSkillsTab:
             name_label = ctk.CTkLabel(master=self.skills_scroll_frame, text=skill_name, anchor="w")
             name_label.grid(row=i, column=0, padx=5, pady=3, sticky="ew")
 
-            trained_var = ctk.BooleanVar()
+            trained_var = tkinter.BooleanVar()
             trained_var.trace_add("write", lambda n,idx,m,bv=trained_var,sn=skill_name: self.on_skill_trained_change(sn,bv))
-            trained_check = ctk.CTkCheckBox(master=self.skills_scroll_frame, text="", width=20, variable=trained_var)
+            trained_check = ctk.CTkCheckBox(master=self.skills_scroll_frame, text="", width=20)
+            trained_check.configure(variable=trained_var)
             trained_check.grid(row=i, column=1, padx=5, pady=3, sticky="w")
             self.skill_trained_vars[skill_name] = trained_var
             self.skill_widgets[skill_name + "_trained_cb"] = trained_check
