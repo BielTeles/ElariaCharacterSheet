@@ -315,7 +315,7 @@ class AttributesSkillsTab:
         """Ajusta o valor de um atributo."""
         try:
             current_val = int(self.attribute_stringvars[attr_name].get())
-            new_val = max(0, current_val + amount)  # Não permite valores negativos
+            new_val = current_val + amount  # Removida a restrição de valor mínimo
             self.attribute_stringvars[attr_name].set(str(new_val))
         except ValueError:
             self.attribute_stringvars[attr_name].set("0")
@@ -324,9 +324,6 @@ class AttributesSkillsTab:
         """Manipula mudanças nos valores dos atributos."""
         try:
             new_val = int(attr_var.get())
-            if new_val < 0:
-                new_val = 0
-                attr_var.set("0")
             
             # Atualiza o personagem
             self.personagem.atributos[attr_name] = new_val
@@ -340,9 +337,9 @@ class AttributesSkillsTab:
                 entry.configure(border_color=COLORS["success"], text_color=COLORS["success"])
             elif new_val >= 3:
                 entry.configure(border_color=COLORS["primary"], text_color=COLORS["primary"])
-            elif new_val >= 1:
+            elif new_val >= 0:
                 entry.configure(border_color=COLORS["warning"], text_color=COLORS["warning"])
-            else:
+            else:  # Valores negativos
                 entry.configure(border_color=COLORS["danger"], text_color=COLORS["danger"])
                 
         except ValueError:
@@ -415,22 +412,22 @@ class AttributesSkillsTab:
             roll_type_text = ""
             if roll_type == ROLL_TYPE_ADVANTAGE:
                 roll_type_text = "↑"  # Seta para cima indica vantagem
+                text_color = COLORS["success"]
             elif roll_type == ROLL_TYPE_DISADVANTAGE:
                 roll_type_text = "↓"  # Seta para baixo indica desvantagem
+                text_color = COLORS["danger"]
+            else:
+                text_color = COLORS["text"]
             
             # Atualiza o label com a informação dos dados
             dice_label = self.attribute_dice_labels[attr_name + "_dice_label"]
             dice_text = f"{num_dice}d20{roll_type_text}"
             
-            # Define a cor baseada no número de dados
-            if num_dice > 1:
+            # Define a cor baseada no número de dados e tipo de rolagem
+            if num_dice > 1 and roll_type == ROLL_TYPE_ADVANTAGE:
                 text_color = COLORS["success"]
-            elif roll_type == ROLL_TYPE_ADVANTAGE:
-                text_color = COLORS["primary"]
-            elif roll_type == ROLL_TYPE_DISADVANTAGE:
-                text_color = COLORS["warning"]
-            else:
-                text_color = COLORS["text"]
+            elif num_dice > 1 and roll_type == ROLL_TYPE_DISADVANTAGE:
+                text_color = COLORS["danger"]
             
             dice_label.configure(text=dice_text, text_color=text_color)
             
@@ -832,9 +829,11 @@ class AttributesSkillsTab:
         )
         self.dice_result_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5, pady=(5, 0))
 
-        # Grid para organizar os elementos
-        self.dice_result_frame.columnconfigure(0, weight=0)  # Animação (fixo)
-        self.dice_result_frame.columnconfigure(1, weight=1)  # Resultado (expansível)
+        # Centraliza o conteúdo
+        self.dice_result_frame.grid_columnconfigure(0, weight=1)  # Espaço à esquerda
+        self.dice_result_frame.grid_columnconfigure(1, weight=0)  # Animação (fixo)
+        self.dice_result_frame.grid_columnconfigure(2, weight=0)  # Texto (fixo)
+        self.dice_result_frame.grid_columnconfigure(3, weight=1)  # Espaço à direita
 
         # Label para animação do dado
         self.dice_animation_label = ctk.CTkLabel(
@@ -844,49 +843,94 @@ class AttributesSkillsTab:
             width=60,
             anchor="center"
         )
-        self.dice_animation_label.grid(row=0, column=0, padx=10, pady=10)
+        self.dice_animation_label.grid(row=0, column=1, padx=10, pady=10)
 
-        # Label para o resultado
+        # Label para o texto "Rolando..."
         self.roll_result_label = ctk.CTkLabel(
             master=self.dice_result_frame,
             text="",
             anchor="w",
-            justify="left",
-            wraplength=600
+            justify="left"
         )
-        self.roll_result_label.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.roll_result_label.grid(row=0, column=2, padx=10, pady=10)
 
-    def _format_roll_result(self, skill_name: str, skill_value: int, final_d20: int, 
-                          all_rolls: list, success_level: str, roll_type_text: str = "") -> str:
-        """Formata o resultado da rolagem com cores e estilos."""
-        # Define cores para diferentes níveis de sucesso
-        success_colors = {
-            SUCCESS_EXTREME: COLORS["success"],
-            SUCCESS_GOOD: COLORS["primary"],
-            SUCCESS_NORMAL: COLORS["secondary"],
-            FAILURE_NORMAL: COLORS["warning"],
-            FAILURE_EXTREME: COLORS["danger"]
+        # Popup para resultado
+        self.result_popup = None  # Será criado quando necessário
+
+    def _create_result_popup(self, formatted_result: str, success_level: str) -> None:
+        """Cria um popup com o resultado da rolagem."""
+        # Se já existe um popup, destrói ele
+        if self.result_popup is not None:
+            self.result_popup.destroy()
+
+        # Define cores baseadas no resultado
+        result_colors = {
+            "SUCESSO EXTREMO": COLORS["success"],
+            "SUCESSO BOM": COLORS["primary"],
+            "SUCESSO NORMAL": COLORS["secondary"],
+            "FRACASSO": COLORS["warning"],
+            "FRACASSO CRÍTICO": COLORS["danger"]
         }
+        result_color = result_colors[success_level]
 
-        # Formata as rolagens múltiplas
-        roll_details = f" (Rolagens: {', '.join(map(str, all_rolls))})" if len(all_rolls) > 1 else ""
+        # Cria um novo popup
+        self.result_popup = ctk.CTkToplevel()
+        self.result_popup.title("Resultado do Teste")
+        self.result_popup.geometry("600x500")  # Aumentado a largura para 600
         
-        # Obtém a cor baseada no nível de sucesso
-        result_color = success_colors.get(success_level, COLORS["text"])
+        # Configura o popup
+        self.result_popup.transient(self.tab_widget.winfo_toplevel())
+        self.result_popup.grab_set()
+        
+        # Centraliza o popup na tela
+        window = self.tab_widget.winfo_toplevel()
+        x = window.winfo_x() + (window.winfo_width() - 600) // 2  # Ajustado para a nova largura
+        y = window.winfo_y() + (window.winfo_height() - 500) // 2
+        self.result_popup.geometry(f"+{x}+{y}")
 
-        # Constrói o texto do resultado
-        lines = [
-            f"Perícia: {skill_name}",
-            f"Valor Total: {skill_value}",
-            f"d20: {final_d20}{roll_details}{roll_type_text}",
-            f"Resultado: {success_level}"
-        ]
+        # Frame interno com padding e borda colorida
+        inner_frame = ctk.CTkFrame(
+            self.result_popup,
+            fg_color="transparent",
+            border_width=2,
+            border_color=result_color,
+            corner_radius=10
+        )
+        inner_frame.pack(fill="both", expand=True, padx=35, pady=30)  # Aumentado o padding horizontal
 
-        return "\n".join(lines)
+        # Label com o resultado
+        result_label = ctk.CTkLabel(
+            inner_frame,
+            text=formatted_result,
+            justify="center",
+            font=ctk.CTkFont(size=16),
+            wraplength=520  # Aumentado para a nova largura
+        )
+        result_label.pack(fill="both", expand=True, padx=30, pady=25)  # Aumentado o padding horizontal
 
-    def _update_roll_result_display(self, formatted_result: str) -> None:
+        # Frame para os botões
+        button_frame = ctk.CTkFrame(inner_frame, fg_color="transparent")
+        button_frame.pack(fill="x", pady=(0, 15))
+
+        # Botão de fechar
+        close_button = ctk.CTkButton(
+            button_frame,
+            text="Fechar",
+            command=self.result_popup.destroy,
+            fg_color=result_color,
+            hover_color=COLORS["surface"],
+            width=140,  # Aumentado a largura do botão
+            height=35
+        )
+        close_button.pack(pady=(20, 0))
+
+    def _update_roll_result_display(self, formatted_result: str, success_level: str) -> None:
         """Atualiza o display do resultado da rolagem."""
-        self.roll_result_label.configure(text=formatted_result)
+        # Limpa o texto de "Rolando..."
+        self.roll_result_label.configure(text="")
+        
+        # Cria o popup com o resultado
+        self._create_result_popup(formatted_result, success_level)
         
         # Reativa todos os botões de rolagem após a animação
         for widget_key in self.skill_widgets:
@@ -900,9 +944,13 @@ class AttributesSkillsTab:
         # Obtém o valor da perícia da UI
         skill_val_str = self.skill_value_stringvars.get(skill_name, ctk.StringVar(value="0")).get()
         try:
-            skill_value_to_test = int(skill_val_str)
+            skill_value = int(skill_val_str)
         except ValueError:
-            skill_value_to_test = 0  # Valor padrão se inválido
+            skill_value = 0  # Valor padrão se inválido
+
+        # Obtém o atributo base da perícia (usado apenas para determinar os dados)
+        base_attribute = self.skill_key_attribute_map[skill_name]
+        base_attribute_value = int(self.attribute_stringvars[base_attribute].get())
 
         # Desabilita todos os botões de rolagem durante a animação
         for widget_key in self.skill_widgets:
@@ -911,16 +959,16 @@ class AttributesSkillsTab:
                 if isinstance(widget, ctk.CTkButton):
                     widget.configure(state="disabled")
 
-        # Inicia a animação
-        self.start_dice_roll_animation(skill_value_to_test, skill_name)
+        # Inicia a animação, usando o atributo para dados e a perícia para o alvo
+        self.start_dice_roll_animation(base_attribute_value, skill_value, skill_name)
 
-    def start_dice_roll_animation(self, skill_value: int, skill_name: str) -> None:
+    def start_dice_roll_animation(self, attribute_value: int, skill_value: int, skill_name: str) -> None:
         """Inicia a animação de rolagem de dados."""
         self.dice_animation_label.configure(text="")
         self.roll_result_label.configure(text=f"Rolando {skill_name}...")
-        self.animate_dice(0, skill_value, skill_name)
+        self.animate_dice(0, attribute_value, skill_value, skill_name)
 
-    def animate_dice(self, step: int, skill_value: int, skill_name: str) -> None:
+    def animate_dice(self, step: int, attribute_value: int, skill_value: int, skill_name: str) -> None:
         """Executa um passo da animação de rolagem de dados."""
         if step < 8:  # 8 passos de animação
             # Gera um número aleatório para a animação
@@ -931,21 +979,98 @@ class AttributesSkillsTab:
             animation_interval = 50 + (step * 25)  # 50ms -> 225ms
             
             # Agenda o próximo passo da animação
-            self.tab_widget.after(animation_interval, self.animate_dice, step + 1, skill_value, skill_name)
+            self.tab_widget.after(animation_interval, self.animate_dice, step + 1, attribute_value, skill_value, skill_name)
         else:
-            # Realiza a rolagem final
-            final_d20, all_rolls = perform_attribute_test_roll(skill_value)
+            # Determina o tipo de rolagem baseado no valor do ATRIBUTO
+            num_dice, roll_type = get_dice_for_attribute_test(attribute_value)
+            
+            # Realiza a rolagem final usando o valor do ATRIBUTO para determinar dados
+            final_d20, all_rolls = perform_attribute_test_roll(attribute_value)
+            
+            # Usa o valor da PERÍCIA para verificar o sucesso
             success_level = check_success(skill_value, final_d20, final_d20)
+
+            # Determina o texto do tipo de rolagem
+            roll_type_text = ""
+            if roll_type == ROLL_TYPE_ADVANTAGE:
+                roll_type_text = " (Vantagem)"
+            elif roll_type == ROLL_TYPE_DISADVANTAGE:
+                roll_type_text = " (Desvantagem)"
+
+            # Atualiza o label de animação com o resultado final
+            self.dice_animation_label.configure(text=str(final_d20))
 
             # Formata e exibe o resultado
             formatted_result = self._format_roll_result(
                 skill_name=skill_name,
                 skill_value=skill_value,
+                attribute_value=attribute_value,
                 final_d20=final_d20,
                 all_rolls=all_rolls,
-                success_level=success_level
+                success_level=success_level,
+                roll_type_text=roll_type_text
             )
-            self._update_roll_result_display(formatted_result)
+            self._update_roll_result_display(formatted_result, success_level)
+
+    def _format_roll_result(self, skill_name: str, skill_value: int, attribute_value: int, final_d20: int, 
+                          all_rolls: list, success_level: str, roll_type_text: str = "") -> str:
+        """Formata o resultado da rolagem com cores e estilos."""
+        # Obtém os valores individuais
+        base_attribute = self.skill_key_attribute_map[skill_name]
+        is_trained = self.skill_trained_vars[skill_name].get()
+
+        # Determina o símbolo e a mensagem baseado no resultado
+        result_info = {
+            "SUCESSO EXTREMO": ("⭐⭐", "Sucesso Extremo! Superou o alvo por 10 ou mais!"),
+            "SUCESSO BOM": ("⭐", "Sucesso Bom! Superou o alvo por 5 a 9 pontos!"),
+            "SUCESSO NORMAL": ("✓", "Sucesso Normal! Alcançou ou superou o alvo!"),
+            "FRACASSO": ("✗", "Fracasso! Ficou abaixo do alvo!"),
+            "FRACASSO CRÍTICO": ("✗✗", "Fracasso Crítico! Ficou 5 ou mais pontos abaixo do alvo!")
+        }
+
+        symbol, message = result_info.get(success_level, ("", ""))
+
+        # Formata o texto do tipo de rolagem e detalhes
+        if roll_type_text:
+            dice_info = f"{len(all_rolls)}d20{roll_type_text}"
+            if len(all_rolls) > 1:
+                roll_details = f"\n→ Rolagens individuais: {', '.join(map(str, all_rolls))}"
+            else:
+                roll_details = ""
+        else:
+            dice_info = "1d20"
+            roll_details = ""
+
+        # Formata o status de treinamento
+        training_status = "[Não Treinada]" if not is_trained else "[Treinada]"
+
+        # Constrói o texto do resultado com mais clareza e organização
+        lines = [
+            "╔═══════════════════════════════╗",
+            f"  {message}  {symbol}",
+            "╚═══════════════════════════════╝",
+            "",
+            "▸ INFORMAÇÕES DO TESTE:",
+            f"• Perícia: {skill_name} {training_status}",
+            f"• Dificuldade do Teste: {skill_value}",
+            "",
+            "▸ DETALHES DA ROLAGEM:",
+            f"• Atributo Base: {base_attribute} (nível {attribute_value})",
+            f"• Dados Usados: {dice_info}"
+        ]
+
+        # Adiciona detalhes das rolagens se houver
+        if roll_details:
+            lines.append(roll_details)
+
+        lines.extend([
+            "",
+            "▸ RESULTADO FINAL:",
+            f"• Valor Obtido: {final_d20}",
+            f"• Alvo Necessário: {skill_value}"
+        ])
+
+        return "\n".join(lines)
 
     def _update_current_stat_pv(self, string_var: ctk.StringVar) -> None:
         """Atualiza os PV atuais no objeto personagem."""

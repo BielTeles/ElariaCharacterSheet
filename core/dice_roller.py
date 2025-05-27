@@ -9,11 +9,11 @@ ROLL_TYPE_ADVANTAGE = "advantage"
 ROLL_TYPE_DISADVANTAGE = "disadvantage"
 
 # Constantes para Graus de Sucesso
-SUCCESS_EXTREME = "Sucesso Extremo"
-SUCCESS_GOOD = "Sucesso Bom"
-SUCCESS_NORMAL = "Sucesso Normal"
-FAILURE_NORMAL = "Fracasso Normal"
-FAILURE_EXTREME = "Fracasso Extremo"
+SUCCESS_EXTREME = "SUCESSO EXTREMO"
+SUCCESS_GOOD = "SUCESSO BOM"
+SUCCESS_NORMAL = "SUCESSO NORMAL"
+FAILURE_NORMAL = "FRACASSO"
+FAILURE_EXTREME = "FRACASSO CRÍTICO"
 
 # Padrão Regex para parsear strings de dano como "XdY+Z", "XdY-Z", "XdY", ou "N"
 # Grupo 1: (Opcional) Número de dados (X)
