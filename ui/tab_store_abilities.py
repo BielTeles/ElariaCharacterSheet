@@ -173,11 +173,11 @@ class StoreAbilitiesTab:
 
             # Adiciona item ao inventário do personagem
             # item_data_compra já é uma cópia do item da loja
-            tipo_inv = item_data_compra.get("tipo_item_para_inventario", "item_geral")
+            tipo_inv = item_data_compra.get("tipo_inventario", "item_geral")
 
             if tipo_inv == "arma":
-                # As chaves devem ser consistentes com o que a CombatTab espera
-                # Ex: 'nome', 'dano', 'atributo_chave', 'tipo_dano', 'empunhadura', 'alcance'
+                # Adiciona informações de origem e preço para armas da loja
+                item_data_compra["origem"] = "loja"  # Usa string direta pois não tem acesso às constantes do CombatTab
                 self.personagem.armas_inventario.append(item_data_compra)
             elif tipo_inv == "armadura":
                 # Adiciona à lista de itens gerais com detalhes relevantes
@@ -187,9 +187,6 @@ class StoreAbilitiesTab:
                     "weight": "", # Peso pode ser adicionado em items_data.py se necessário
                     "description": f"Tipo: {item_data_compra.get('tipo_armadura')}, RD: {item_data_compra.get('rd')}"
                 })
-                # Se quiser que a armadura comprada seja automaticamente equipada e atualize RD total:
-                # self.personagem.armadura_equipada = {"nome": item_data_compra.get("nome"), "rd_fornecida": item_data_compra.get("rd",0)}
-                # self.personagem.rd_total += item_data_compra.get("rd",0) # Ou lógica mais complexa
             elif tipo_inv == "escudo":
                 self.personagem.itens_gerais.append({
                     "nome": item_data_compra.get("nome"), 

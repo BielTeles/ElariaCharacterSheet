@@ -292,9 +292,9 @@ class AppUI:
         self.root.after(ANIMATION_SPEED, setup_principal_delayed)
         
         # Instanciação das classes das abas
-        self.attributes_skills_tab = AttributesSkillsTab(self.tab_attrs_skills_widget, self.personagem_atual)
-        self.combat_tab = CombatTab(self.tab_combat_widget, self.attributes_skills_tab, self.personagem_atual, self) # Adicionado 'self' no final
-        self.magic_tab = MagicTab(self.tab_magia_widget, self.personagem_atual)
+        self.attributes_skills_tab = AttributesSkillsTab(self.tab_attrs_skills_widget, self.personagem_atual, self)
+        self.combat_tab = CombatTab(self.tab_combat_widget, self.attributes_skills_tab, self.personagem_atual, self)
+        self.magic_tab = MagicTab(self.tab_magia_widget, self.personagem_atual, self)
         self.inventory_tab = InventoryTab(self.tab_inventario_widget, self.personagem_atual)
         self.store_abilities_tab = StoreAbilitiesTab(self.tab_loja_habilidades_widget, self.personagem_atual, self)
         self.dice_roller_generic_tab = DiceRollerGenericTab(self.tab_rolador_widget)

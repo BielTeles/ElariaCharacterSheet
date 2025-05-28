@@ -173,6 +173,7 @@ class AttributesSkillsTab:
     além de realizar testes de perícia.
     """
     personagem: Personagem # Referência ao objeto Personagem atual
+    app_ui: Any  # Referência ao AppUI
 
     attribute_entries: Dict[str, ctk.CTkEntry]
     attribute_dice_labels: Dict[str, ctk.CTkLabel]
@@ -193,9 +194,10 @@ class AttributesSkillsTab:
     dice_animation_label: ctk.CTkLabel
     roll_result_label: ctk.CTkLabel
 
-    def __init__(self, tab_widget: ctk.CTkFrame, personagem: Personagem):
+    def __init__(self, tab_widget: ctk.CTkFrame, personagem: Personagem, app_ui_ref: Any):
         self.tab_widget = tab_widget
         self.personagem = personagem
+        self.app_ui = app_ui_ref
 
         # Frame principal com melhor organização
         self.main_frame = ctk.CTkFrame(self.tab_widget, fg_color="transparent")
@@ -376,6 +378,16 @@ class AttributesSkillsTab:
                 entry.configure(border_color=COLORS["warning"], text_color=COLORS["warning"])
             else:
                 entry.configure(border_color=COLORS["danger"], text_color=COLORS["danger"])
+                
+            # Notifica outras abas da mudança
+            if skill_name in ["Corpo-a-Corpo", "Pontaria", "Elemental", "Esquiva", "Bloqueio", "Iniciativa"]:
+                if hasattr(self.personagem, 'atualizar_pericia_valor'):
+                    self.personagem.atualizar_pericia_valor(skill_name, new_val)
+                    # Atualiza as abas que usam estas perícias
+                    if hasattr(self.app_ui, 'combat_tab'):
+                        self.app_ui.combat_tab.load_data_from_personagem()
+                    if hasattr(self.app_ui, 'magic_tab') and skill_name == "Elemental":
+                        self.app_ui.magic_tab.load_data_from_personagem()
                 
         except ValueError:
             # Reverte para o valor anterior em caso de entrada inválida

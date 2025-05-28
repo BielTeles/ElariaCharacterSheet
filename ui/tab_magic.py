@@ -5,10 +5,10 @@ from typing import List, Dict, Any, Union, Optional, Callable, Tuple
 
 class MagicTab:
     """
-    Gerencia a aba de Magia, exibindo informações mágicas,
-    listando magias/habilidades e permitindo sua adição/remoção.
+    Gerencia a aba de Magia, exibindo e controlando as habilidades mágicas do personagem.
     """
-    personagem: Any  # Idealmente: Personagem
+    personagem: Any  # Deveria ser Personagem
+    app_ui: Any  # Deveria ser AppUI
     
     # Lista para guardar os FRAMES e DADOS de cada magia na UI
     spell_ui_elements: List[Dict[str, Any]] 
@@ -21,11 +21,16 @@ class MagicTab:
     magic_attack_bonus_var: ctk.StringVar
     magic_path_var: ctk.StringVar
 
-    spells_scroll_frame: ctk.CTkScrollableFrame
+    # Labels e botões para habilidades equipadas
+    equipped_spells_labels: List[ctk.CTkLabel]
+    equipped_spells_buttons: List[ctk.CTkButton]
+    action_roll_animation_label: ctk.CTkLabel
+    action_roll_result_label: ctk.CTkLabel
 
-    def __init__(self, tab_widget: ctk.CTkFrame, personagem_atual: Any):
+    def __init__(self, tab_widget: ctk.CTkFrame, personagem_atual: Any, app_ui_ref: Any):
         self.tab_widget = tab_widget
         self.personagem = personagem_atual
+        self.app_ui = app_ui_ref
         
         self.spell_ui_elements = [] 
 
@@ -36,38 +41,27 @@ class MagicTab:
         self.magic_attack_bonus_var = ctk.StringVar()
         self.magic_path_var = ctk.StringVar()
 
-        self.main_frame = ctk.CTkFrame(self.tab_widget, fg_color="transparent")
-        self.main_frame.pack(fill="both", expand=True)
-        self.main_frame.columnconfigure(0, weight=1) 
-        self.main_frame.columnconfigure(1, weight=2) 
-        self.main_frame.rowconfigure(1, weight=1) # Para a lista de magias expandir    
+        self.main_scroll = ctk.CTkScrollableFrame(self.tab_widget, fg_color="transparent")
+        self.main_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Grid configuration para o frame principal
+        self.main_scroll.columnconfigure(0, weight=1)
+        self.main_scroll.columnconfigure(1, weight=1)
 
-        self.setup_magic_info_section()
-        self.setup_spells_list_section()
+        # Seções da UI
+        self.setup_magic_overview_section()  # Visão geral das magias
+        self.setup_equipped_spells_section()  # Magias equipadas
+        self.setup_spell_result_section()  # Área de resultado das rolagens
         
         self.load_data_from_personagem()
 
     def load_data_from_personagem(self) -> None:
-        """Carrega/Recarrega dados do self.personagem para os campos da UI desta aba."""
-        self.pm_current_var.set(str(self.personagem.pm_atuais))
-        self.pm_max_var.set(str(self.personagem.pm_maximo))
-        self.key_magic_attr_var.set(str(self.personagem.atributo_chave_magia))
-        self.magic_save_dc_var.set(str(self.personagem.cd_teste_resistencia_magia))
-        self.magic_attack_bonus_var.set(str(self.personagem.bonus_ataque_magico))
-        self.magic_path_var.set(str(self.personagem.caminho_especializacao_magica))
-
-        # Limpar magias existentes na UI
-        for spell_element in self.spell_ui_elements:
-            frame = spell_element.get('frame')
-            if isinstance(frame, ctk.CTkFrame):
-                frame.destroy()
-        self.spell_ui_elements.clear()
-
-        # Repopular a lista de magias da UI a partir do personagem
-        if hasattr(self.personagem, 'magias_habilidades') and isinstance(self.personagem.magias_habilidades, list):
-            for spell_data_dict_from_char in self.personagem.magias_habilidades:
-                # Passa a referência do dicionário de dados do personagem
-                self.add_spell_entry_ui(initial_spell_data=spell_data_dict_from_char, is_loading=True)
+        """Carrega dados do objeto Personagem para a UI da aba de Magia."""
+        # Atualizar valor da perícia Elemental
+        self.elemental_val_var.set(str(self.personagem.pericias_valores.get("Elemental", 0)))
+        
+        # Atualizar magias equipadas
+        self._update_equipped_spells_display()
 
     def _update_personagem_magic_attr(self, attr_name_in_personagem: str,
                                       string_var: ctk.StringVar, is_int: bool = False) -> None:
@@ -92,159 +86,171 @@ class MagicTab:
                 self.personagem.recalcular_maximos()
                 self.pm_max_var.set(str(self.personagem.pm_maximo))
 
-
-    def setup_magic_info_section(self) -> None:
-        """Configura a seção de informações mágicas gerais na UI."""
-        info_frame = ctk.CTkFrame(self.main_frame)
-        info_frame.grid(row=0, column=0, padx=10, pady=10, sticky="new")
-        info_frame.columnconfigure(1, weight=1)
-        title_info_label = ctk.CTkLabel(master=info_frame, text="Recursos Mágicos", font=ctk.CTkFont(size=16, weight="bold"))
-        title_info_label.grid(row=0, column=0, columnspan=2, padx=5, pady=(5,10), sticky="n")
+    def setup_magic_overview_section(self) -> None:
+        """Configura a seção de visão geral das magias."""
+        overview_frame = ctk.CTkFrame(self.main_scroll)
+        overview_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
         
-        # PM
-        pm_label = ctk.CTkLabel(master=info_frame, text="Pontos de Mana (PM):")
-        pm_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        pm_sub_frame = ctk.CTkFrame(info_frame, fg_color="transparent")
-        pm_sub_frame.grid(row=1, column=1, padx=5, pady=2, sticky="ew")
-        pm_current_entry = ctk.CTkEntry(master=pm_sub_frame, placeholder_text="Atual", width=60, textvariable=self.pm_current_var)
-        pm_current_entry.pack(side="left", padx=(0,2))
-        self.pm_current_var.trace_add("write", lambda n,i,m, attr='pm_atuais', sv=self.pm_current_var : self._update_personagem_magic_attr(attr, sv, is_int=True))
-        ctk.CTkLabel(master=pm_sub_frame, text="/").pack(side="left", padx=2)
-        pm_max_display_label = ctk.CTkLabel(master=pm_sub_frame, textvariable=self.pm_max_var, width=60) # Apenas display
-        pm_max_display_label.pack(side="left", padx=(2,0))
-
-        # Outros campos de informação
-        fields_info: List[Tuple[str, ctk.StringVar, str, bool]] = [
-            ("Atributo Chave Magia:", self.key_magic_attr_var, 'atributo_chave_magia', False),
-            ("CD Teste Resist. Magia:", self.magic_save_dc_var, 'cd_teste_resistencia_magia', True),
-            ("Bônus Ataque Mágico:", self.magic_attack_bonus_var, 'bonus_ataque_magico', False), # Pode ser string como "+X"
-            ("Caminho/Especialização:", self.magic_path_var, 'caminho_especializacao_magica', False)
-        ]
-        for i, (text, var, attr_name, is_int_val) in enumerate(fields_info):
-            label = ctk.CTkLabel(master=info_frame, text=text)
-            label.grid(row=i+2, column=0, padx=5, pady=5, sticky="w")
-            entry = ctk.CTkEntry(master=info_frame, textvariable=var)
-            entry.grid(row=i+2, column=1, padx=5, pady=5, sticky="ew")
-            var.trace_add("write", lambda n,idx,mode, attr=attr_name, sv=var, is_i=is_int_val: self._update_personagem_magic_attr(attr, sv, is_i))
-
-    def setup_spells_list_section(self) -> None:
-        """Configura a seção para listar e adicionar magias/habilidades."""
-        spells_list_main_frame = ctk.CTkFrame(self.main_frame)
-        spells_list_main_frame.grid(row=0, column=1, rowspan=2, padx=10, pady=10, sticky="nsew")
-        spells_list_main_frame.rowconfigure(1, weight=1) # ScrollFrame expande
-        spells_list_main_frame.columnconfigure(0, weight=1)
-
-
-        title_spells_label = ctk.CTkLabel(master=spells_list_main_frame, text="Magias e Habilidades", font=ctk.CTkFont(size=16, weight="bold"))
-        title_spells_label.pack(pady=(5,10)) # Centralizado por padrão com pack
-
-        self.spells_scroll_frame = ctk.CTkScrollableFrame(spells_list_main_frame, label_text="")
-        self.spells_scroll_frame.pack(fill="both", expand=True, padx=5, pady=5)
-
-        add_spell_button = ctk.CTkButton(master=spells_list_main_frame, text="Adicionar Magia/Habilidade Manualmente",
-                                         command=lambda: self.add_spell_entry_ui())
-        add_spell_button.pack(pady=10)
+        # Título da seção
+        title_frame = ctk.CTkFrame(overview_frame, fg_color="transparent")
+        title_frame.pack(fill="x", padx=5, pady=(5,0))
+        ctk.CTkLabel(title_frame, text="Visão Geral das Magias", font=ctk.CTkFont(size=16, weight="bold")).pack(side="left")
         
-    def _on_spell_data_change(self, spell_data_dict_ref: Dict[str, Any], key: str,
-                                widget_or_var: Union[ctk.StringVar, ctk.CTkTextbox],
-                                is_new_entry: bool = False) -> None:
-        """
-        Atualiza o dicionário de dados da magia/habilidade no modelo do personagem.
-        Se for uma nova entrada e o nome for preenchido, adiciona ao modelo.
-        """
-        new_value: str
-        if isinstance(widget_or_var, ctk.StringVar):
-            new_value = widget_or_var.get()
-        elif isinstance(widget_or_var, ctk.CTkTextbox):
-            new_value = widget_or_var.get("0.0", "end-1c")
-        else:
-            return # Tipo de widget não esperado
-
-        # Se é uma nova entrada (não carregada) e o nome está sendo preenchido pela primeira vez
-        if is_new_entry and key == 'name' and new_value.strip() and \
-           spell_data_dict_ref not in self.personagem.magias_habilidades:
-            self.personagem.magias_habilidades.append(spell_data_dict_ref)
-            # Uma vez adicionado, não é mais 'is_new_entry' para este callback específico
-            # (a flag 'is_new_entry' é ligada à criação da linha da UI, não ao estado do objeto)
+        # Container para os valores principais
+        values_frame = ctk.CTkFrame(overview_frame, fg_color="transparent")
+        values_frame.pack(fill="x", padx=10, pady=5)
         
-        if spell_data_dict_ref.get(key) != new_value:
-            spell_data_dict_ref[key] = new_value
-        # print(f"Magia '{spell_data_dict_ref.get('name')}': campo '{key}' -> '{new_value}'") # Debug
-
-    def add_spell_entry_ui(self, initial_spell_data: Optional[Dict[str, Any]] = None, is_loading: bool = False) -> None:
-        """
-        Adiciona uma entrada de magia/habilidade à UI.
-        Se 'initial_spell_data' é fornecido (is_loading=True), usa essa referência do modelo.
-        Caso contrário, cria um novo dicionário para uma nova entrada.
-        """
-        spell_data_dict_ref: Dict[str, Any]
-        is_new_ui_entry = False # Flag para o callback _on_spell_data_change
-
-        if is_loading and initial_spell_data is not None:
-            spell_data_dict_ref = initial_spell_data # Usa a referência direta do modelo
-        else:
-            spell_data_dict_ref = {'name': "", 'mp_cost': "", 'cast_time': "", 
-                                   'range_dur': "", 'target_effect': ""}
-            is_new_ui_entry = True # Esta é uma nova linha criada pelo botão "Adicionar"
-
-        spell_frame = ctk.CTkFrame(self.spells_scroll_frame, border_width=1)
-        spell_frame.pack(fill="x", pady=5, padx=5)
-        spell_frame.columnconfigure(1, weight=1)
+        # Primeira linha - Valores principais
+        main_values_frame = ctk.CTkFrame(values_frame, fg_color="transparent")
+        main_values_frame.pack(fill="x", pady=(0,5))
         
-        # Armazena o frame e a referência aos dados para facilitar a remoção
-        self.spell_ui_elements.append({'frame': spell_frame, 'data_dict_ref': spell_data_dict_ref})
-
-        # Campos para a magia/habilidade
-        # (label_text, attr_key, grid_row, is_textbox, height_if_textbox)
-        fields_map: List[Tuple[str, str, int, bool, int]] = [
-            ("Nome:", 'name', 0, False, 0),
-            ("Custo PM:", 'mp_cost', 1, False, 0),
-            ("Tempo Uso:", 'cast_time', 2, False, 0),
-            ("Alcance/Duração:", 'range_dur', 3, False, 0),
-            ("Alvo/Efeito (Resumo):", 'target_effect', 4, True, 60)
-        ]
+        # Perícia Elemental com ícone
+        magic_frame = ctk.CTkFrame(main_values_frame, fg_color="#2B2B2B")
+        magic_frame.pack(side="left", padx=5, fill="both")
+        ctk.CTkLabel(magic_frame, text="✨", font=ctk.CTkFont(size=20)).pack(side="left", padx=5)
+        ctk.CTkLabel(magic_frame, text="Elemental", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=2)
         
-        remove_button = ctk.CTkButton(master=spell_frame, text="X", width=25, height=25,
-                                      command=lambda sf=spell_frame, sd_ref=spell_data_dict_ref: self.remove_spell_ui(sf, sd_ref))
-        remove_button.grid(row=0, column=2, padx=5, pady=(5,0), sticky="ne") # Colocado na primeira linha, coluna 2
+        # Criar StringVar para o valor da perícia Elemental
+        self.elemental_val_var = ctk.StringVar()
+        
+        self.elemental_val_entry = ctk.CTkEntry(magic_frame, width=50, justify="center", 
+                                               textvariable=self.elemental_val_var,
+                                               state="readonly",  # Torna o entry somente leitura
+                                               fg_color="#1a1a1a")  # Cor de fundo mais escura para indicar read-only
+        self.elemental_val_entry.pack(side="left", padx=5, pady=5)
 
-        for label_text, attr_key, grid_row, is_textbox, height in fields_map:
-            label = ctk.CTkLabel(master=spell_frame, text=label_text)
-            label.grid(row=grid_row, column=0, padx=5, pady=2, sticky="nw")
-
-            current_value = str(spell_data_dict_ref.get(attr_key, ""))
-
-            if is_textbox:
-                widget = ctk.CTkTextbox(master=spell_frame, height=height if height else 60, wrap="word")
-                widget.insert("0.0", current_value)
-                # Passa is_new_ui_entry para o callback do nome
-                is_name_field = (attr_key == 'name')
-                widget.bind("<KeyRelease>", 
-                            lambda event, s_data=spell_data_dict_ref, k=attr_key, txt_w=widget, new=is_new_ui_entry and is_name_field:
-                            self._on_spell_data_change(s_data, k, txt_w, new))
-            else:
-                var = ctk.StringVar(value=current_value)
-                widget = ctk.CTkEntry(master=spell_frame, placeholder_text=label_text.replace(":", ""), textvariable=var)
-                is_name_field = (attr_key == 'name')
-                var.trace_add("write", 
-                              lambda n,i,m, s_data=spell_data_dict_ref, k=attr_key, v=var, new=is_new_ui_entry and is_name_field:
-                              self._on_spell_data_change(s_data, k, v, new))
+    def _on_elemental_value_change(self) -> None:
+        """Manipula mudanças no valor da perícia Elemental."""
+        try:
+            new_val = int(self.elemental_val_var.get())
+            if new_val < 0:
+                new_val = 0
+                self.elemental_val_var.set("0")
             
-            widget.grid(row=grid_row, column=1, padx=5, pady=2, sticky="ew")
+            # Atualiza o personagem
+            if self.personagem.pericias_valores.get("Elemental") != new_val:
+                self.personagem.atualizar_pericia_valor("Elemental", new_val)
+                
+                # Atualiza a aba de Atributos & Perícias
+                if hasattr(self.app_ui, 'attributes_skills_tab'):
+                    self.app_ui.attributes_skills_tab.load_data_from_personagem()
+                
+        except ValueError:
+            # Reverte para o valor anterior em caso de entrada inválida
+            self.elemental_val_var.set(str(self.personagem.pericias_valores.get("Elemental", 0)))
 
-
-    def remove_spell_ui(self, spell_frame_to_remove: ctk.CTkFrame, spell_data_to_remove: Dict[str, Any]) -> None:
-        """Remove uma magia/habilidade da UI e do modelo do personagem."""
-        spell_frame_to_remove.destroy()
+    def setup_equipped_spells_section(self) -> None:
+        """Configura a seção de magias equipadas."""
+        equipped_frame = ctk.CTkFrame(self.main_scroll)
+        equipped_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
         
-        element_to_remove_from_ui_list: Optional[Dict[str, Any]] = None
-        for spell_el in self.spell_ui_elements:
-            if spell_el.get('frame') == spell_frame_to_remove:
-                element_to_remove_from_ui_list = spell_el
-                break
-        if element_to_remove_from_ui_list:
-            self.spell_ui_elements.remove(element_to_remove_from_ui_list)
+        # Título da seção
+        title_frame = ctk.CTkFrame(equipped_frame, fg_color="transparent")
+        title_frame.pack(fill="x", padx=5, pady=(5,0))
+        ctk.CTkLabel(title_frame, text="✨ Magias Equipadas", font=ctk.CTkFont(size=16, weight="bold")).pack(side="left")
+        
+        # Container para as magias
+        spells_frame = ctk.CTkFrame(equipped_frame, fg_color="transparent")
+        spells_frame.pack(fill="x", padx=10, pady=5)
+        
+        # Lista para armazenar referências dos widgets de magias equipadas
+        self.equipped_spells_labels = []
+        self.equipped_spells_buttons = []
+        
+        # Criar slots para magias equipadas (exemplo com 4 slots)
+        for i in range(4):
+            spell_frame = ctk.CTkFrame(spells_frame, fg_color="#2B2B2B")
+            spell_frame.pack(fill="x", pady=(0,5))
+            
+            # Cabeçalho do slot
+            header = ctk.CTkFrame(spell_frame, fg_color="transparent")
+            header.pack(fill="x", padx=5, pady=2)
+            ctk.CTkLabel(header, text="✨", font=ctk.CTkFont(size=20)).pack(side="left", padx=2)
+            ctk.CTkLabel(header, text=f"Slot {i+1}", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=5)
+            
+            # Informações da magia
+            info = ctk.CTkFrame(spell_frame, fg_color="transparent")
+            info.pack(fill="x", padx=5, pady=2)
+            
+            name_label = ctk.CTkLabel(info, text="---", anchor="w")
+            name_label.pack(side="left", padx=5, fill="x", expand=True)
+            self.equipped_spells_labels.append(name_label)
+            
+            # Botões de ação
+            actions = ctk.CTkFrame(spell_frame, fg_color="transparent")
+            actions.pack(fill="x", padx=5, pady=2)
+            
+            unequip_btn = ctk.CTkButton(actions, text="❌ Desequipar", width=80, state="disabled",
+                                      command=lambda idx=i: self.unequip_spell(idx))
+            unequip_btn.pack(side="right", padx=2)
+            
+            cast_btn = ctk.CTkButton(actions, text="✨ Lançar", width=80, state="disabled",
+                                   command=lambda idx=i: self.cast_spell(idx))
+            cast_btn.pack(side="right", padx=2)
+            
+            self.equipped_spells_buttons.extend([cast_btn, unequip_btn])
 
-        if hasattr(self.personagem, 'magias_habilidades') and spell_data_to_remove in self.personagem.magias_habilidades:
-            self.personagem.magias_habilidades.remove(spell_data_to_remove)
-        # print(f"Magias no personagem após remover: {len(self.personagem.magias_habilidades)}") # Debug
+    def setup_spell_result_section(self) -> None:
+        """Configura a área de resultado das rolagens de magia."""
+        result_frame = ctk.CTkFrame(self.main_scroll)
+        result_frame.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+        
+        # Título da seção
+        ctk.CTkLabel(result_frame, text="🎲", font=ctk.CTkFont(size=20)).pack(side="left", padx=5)
+        ctk.CTkLabel(result_frame, text="Resultado", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=5)
+        
+        # Labels para animação e resultado
+        self.action_roll_animation_label = ctk.CTkLabel(result_frame, text="", width=100,
+                                                       font=ctk.CTkFont(size=20, weight="bold"))
+        self.action_roll_animation_label.pack(side="left", padx=5)
+        
+        self.action_roll_result_label = ctk.CTkLabel(result_frame, text="", anchor="w", wraplength=440)
+        self.action_roll_result_label.pack(side="left", fill="x", expand=True, padx=5)
+
+    def cast_spell(self, slot_index: int) -> None:
+        """Lança a magia equipada no slot especificado."""
+        if hasattr(self.personagem, 'magias_habilidades') and isinstance(self.personagem.magias_habilidades, list):
+            if 0 <= slot_index < len(self.personagem.magias_habilidades):
+                magia = self.personagem.magias_habilidades[slot_index]
+                # TODO: Implementar a lógica de lançamento de magia
+                self.action_roll_animation_label.configure(text="🎲")
+                self.action_roll_result_label.configure(text=f"Lançando {magia.get('nome', '---')}...")
+
+    def _update_equipped_spells_display(self) -> None:
+        """Atualiza os labels e botões na UI para as magias equipadas."""
+        # Limpar todos os labels
+        for label in self.equipped_spells_labels:
+            label.configure(text="---")
+        
+        # Desabilitar todos os botões
+        for button in self.equipped_spells_buttons:
+            button.configure(state="disabled")
+        
+        # Atualizar com as magias equipadas do personagem
+        if hasattr(self.personagem, 'magias_habilidades') and isinstance(self.personagem.magias_habilidades, list):
+            for i, magia in enumerate(self.personagem.magias_habilidades[:4]):  # Limita a 4 magias
+                if i < len(self.equipped_spells_labels):
+                    # Atualiza o nome da magia
+                    self.equipped_spells_labels[i].configure(text=magia.get('nome', '---'))
+                    
+                    # Habilita os botões correspondentes
+                    cast_btn_idx = i * 2  # Cada slot tem 2 botões
+                    unequip_btn_idx = cast_btn_idx + 1
+                    
+                    if cast_btn_idx < len(self.equipped_spells_buttons):
+                        self.equipped_spells_buttons[cast_btn_idx].configure(state="normal")
+                    if unequip_btn_idx < len(self.equipped_spells_buttons):
+                        self.equipped_spells_buttons[unequip_btn_idx].configure(state="normal")
+
+    def unequip_spell(self, slot_index: int) -> None:
+        """Remove uma magia equipada do slot especificado."""
+        if hasattr(self.personagem, 'magias_habilidades') and isinstance(self.personagem.magias_habilidades, list):
+            if 0 <= slot_index < len(self.personagem.magias_habilidades):
+                self.personagem.magias_habilidades.pop(slot_index)
+                self._update_equipped_spells_display()
+                self.app_ui.show_feedback_message("Magia desequipada com sucesso!", 1500)
+
+    def _update_equipped_spells_display(self) -> None:
+        """Atualiza os labels e botões na UI para as magias equipadas."""
+        # TODO: Implementar quando tivermos o sistema de magias
+        pass
