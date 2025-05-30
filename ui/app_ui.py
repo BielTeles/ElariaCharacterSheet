@@ -11,8 +11,10 @@ from ui.tab_magic import MagicTab
 from ui.tab_inventory import InventoryTab
 from ui.tab_notes import NotesTab # Importado para consistência
 from ui.tab_dice_roller_generic import DiceRollerGenericTab
-from ui.tab_store_abilities import StoreAbilitiesTab
+from ui.tab_store import StoreTab
 from ui.themes import ThemeManager
+from datetime import datetime
+from ui.widgets.tooltip import ToolTip
 
 # Constantes de cores e temas
 COLORS = {
@@ -47,43 +49,6 @@ for class_name_key in SUBCLASS_OPTIONS:
         SUBCLASS_OPTIONS[class_name_key].insert(0, "")
 
 
-class ToolTip:
-    """Classe para criar tooltips personalizados."""
-    
-    def __init__(self, widget: ctk.CTkBaseClass, text: str):
-        self.widget = widget
-        self.text = text
-        self.tooltip_window = None
-        self.widget.bind('<Enter>', self.show_tooltip)
-        self.widget.bind('<Leave>', self.hide_tooltip)
-    
-    def show_tooltip(self, event=None):
-        x, y, _, _ = self.widget.bbox("insert")
-        x += self.widget.winfo_rootx() + 25
-        y += self.widget.winfo_rooty() + 25
-        
-        self.tooltip_window = tkinter.Toplevel(self.widget)
-        self.tooltip_window.wm_overrideredirect(True)
-        self.tooltip_window.wm_geometry(f"+{x}+{y}")
-        
-        label = tkinter.Label(
-            self.tooltip_window,
-            text=self.text,
-            justify='left',
-            background="#34495e",
-            foreground="#ecf0f1",
-            relief='solid',
-            borderwidth=1,
-            font=("Helvetica", 10)
-        )
-        label.pack()
-    
-    def hide_tooltip(self, event=None):
-        if self.tooltip_window:
-            self.tooltip_window.destroy()
-            self.tooltip_window = None
-
-
 class AppUI:
     """
     Classe principal da Interface do Usuário (UI) para a Ficha de Personagem Elaria RPG.
@@ -107,7 +72,7 @@ class AppUI:
     tab_combat_widget: ctk.CTkFrame
     tab_magia_widget: ctk.CTkFrame
     tab_inventario_widget: ctk.CTkFrame
-    tab_loja_habilidades_widget: ctk.CTkFrame
+    tab_loja_widget: ctk.CTkFrame
     tab_rolador_widget: ctk.CTkFrame
     tab_notas_widget: ctk.CTkFrame
 
@@ -121,8 +86,8 @@ class AppUI:
     combat_tab: CombatTab
     magic_tab: MagicTab
     inventory_tab: InventoryTab
-    store_abilities_tab: StoreAbilitiesTab
-    dice_roller_generic_tab: DiceRollerGenericTab
+    store_tab: StoreTab
+    dice_roller_tab: DiceRollerGenericTab
     notes_tab: NotesTab
 
     def __init__(self, root: ctk.CTk):
@@ -148,10 +113,10 @@ class AppUI:
         self.root.minsize(1600, 900)
         
         # Configurar ícone da janela
-        try:
-            self.root.iconbitmap("assets/icon.ico")
-        except:
-            pass
+        # try:
+        #     self.root.iconbitmap("assets/icon.ico")
+        # except:
+        #     pass
             
         self.personagem_atual = Personagem()
 
@@ -248,7 +213,7 @@ class AppUI:
             "Combate": "Configurações e estatísticas de combate",
             "Magia": "Magias e habilidades mágicas",
             "Inventário": "Gerenciar itens e equipamentos",
-            "Loja & Habilidades": "Comprar itens e habilidades",
+            "Loja de Itens": "Comprar itens para o personagem",
             "Rolador de Dados": "Realizar rolagens de dados",
             "Notas": "Anotações sobre o personagem"
         }
@@ -270,7 +235,7 @@ class AppUI:
         self.tab_combat_widget = self.tab_widgets["Combate"]
         self.tab_magia_widget = self.tab_widgets["Magia"]
         self.tab_inventario_widget = self.tab_widgets["Inventário"]
-        self.tab_loja_habilidades_widget = self.tab_widgets["Loja & Habilidades"]
+        self.tab_loja_widget = self.tab_widgets["Loja de Itens"]
         self.tab_rolador_widget = self.tab_widgets["Rolador de Dados"]
         self.tab_notas_widget = self.tab_widgets["Notas"]
 
@@ -296,8 +261,8 @@ class AppUI:
         self.combat_tab = CombatTab(self.tab_combat_widget, self.attributes_skills_tab, self.personagem_atual, self)
         self.magic_tab = MagicTab(self.tab_magia_widget, self.personagem_atual, self)
         self.inventory_tab = InventoryTab(self.tab_inventario_widget, self.personagem_atual)
-        self.store_abilities_tab = StoreAbilitiesTab(self.tab_loja_habilidades_widget, self.personagem_atual, self)
-        self.dice_roller_generic_tab = DiceRollerGenericTab(self.tab_rolador_widget)
+        self.store_tab = StoreTab(self.tab_loja_widget, self.personagem_atual, self)
+        self.dice_roller_tab = DiceRollerGenericTab(self.tab_rolador_widget)
         self.notes_tab = NotesTab(self.tab_notas_widget, self.personagem_atual)
 
     def _create_theme_menu(self) -> None:
@@ -429,8 +394,8 @@ class AppUI:
                     # Chamadas adicionais aqui podem ser redundantes se o fluxo estiver correto.
                     if hasattr(self, 'attributes_skills_tab'):
                          self.attributes_skills_tab.atualizar_display_maximos()
-                    if hasattr(self, 'store_abilities_tab'):
-                        self.store_abilities_tab.load_data_from_personagem()
+                    if hasattr(self, 'store_tab'):
+                        self.store_tab.load_data_from_personagem()
 
             except ValueError:
                 string_var_instance.set(str(valor_atual_modelo)) # Reverte na UI
@@ -441,12 +406,12 @@ class AppUI:
                 if attr_name == "classe_principal":
                     self.personagem_atual.atualizar_classe_principal(new_value_str)
                     self._update_subclass_options(new_value_str)
-                    if hasattr(self, 'store_abilities_tab'):
-                        self.store_abilities_tab.load_data_from_personagem()
+                    if hasattr(self, 'store_tab'):
+                        self.store_tab.load_data_from_personagem()
                 elif attr_name == "sub_classe":
                     self.personagem_atual.sub_classe = new_value_str
-                    if hasattr(self, 'store_abilities_tab'):
-                        self.store_abilities_tab.load_data_from_personagem()
+                    if hasattr(self, 'store_tab'):
+                        self.store_tab.load_data_from_personagem()
                 elif attr_name == "raca":
                     self.personagem_atual.atualizar_raca(new_value_str)
                 else: # Para outros atributos string
@@ -486,8 +451,8 @@ class AppUI:
             if self.personagem_atual.sub_classe != valor_subclasse_final:
                 self.personagem_atual.sub_classe = valor_subclasse_final
                 # Se a subclasse mudar, algumas abas podem precisar de atualização
-                if hasattr(self, 'store_abilities_tab'):
-                    self.store_abilities_tab.load_data_from_personagem()
+                if hasattr(self, 'store_tab'):
+                    self.store_tab.load_data_from_personagem()
 
 
             # Recadastrar o trace
@@ -757,12 +722,90 @@ class AppUI:
             self.inventory_tab.personagem = self.personagem_atual
             self.inventory_tab.load_data_from_personagem()
         
-        if hasattr(self, 'store_abilities_tab') and self.store_abilities_tab:
-            self.store_abilities_tab.personagem = self.personagem_atual
-            self.store_abilities_tab.load_data_from_personagem()
+        if hasattr(self, 'store_tab') and self.store_tab:
+            self.store_tab.personagem = self.personagem_atual
+            self.store_tab.load_data_from_personagem()
 
         if hasattr(self, 'notes_tab') and self.notes_tab:
             self.notes_tab.personagem = self.personagem_atual
             self.notes_tab.load_data_from_personagem() # Chama o novo método
 
         # print("UI atualizada.") # Para debug
+
+    def _setup_tabs(self) -> None:
+        """Configura as abas da interface."""
+        # Criação das abas com ícones e tooltips
+        tabs_info = {
+            "Principal": "Informações básicas do personagem",
+            "Atributos & Perícias": "Gerenciar atributos e perícias do personagem",
+            "Combate": "Configurações e estatísticas de combate",
+            "Magia": "Magias e habilidades mágicas",
+            "Inventário": "Gerenciar itens e equipamentos",
+            "Loja de Itens": "Comprar itens para o personagem",
+            "Rolador de Dados": "Realizar rolagens de dados",
+            "Notas": "Anotações sobre o personagem"
+        }
+
+        # Criar as abas e armazenar referências
+        self.tab_widgets = {}
+        for tab_name in tabs_info.keys():
+            tab_widget = self.tab_view.add(tab_name)
+            self.tab_widgets[tab_name] = tab_widget
+
+        # Inicializar as abas com suas classes específicas
+        self.attributes_skills_tab = AttributesSkillsTab(self.tab_widgets["Atributos & Perícias"], self.personagem_atual, self)
+        self.combat_tab = CombatTab(self.tab_widgets["Combate"], self.personagem_atual, self)
+        self.magic_tab = MagicTab(self.tab_widgets["Magia"], self.personagem_atual, self)
+        self.inventory_tab = InventoryTab(self.tab_widgets["Inventário"], self.personagem_atual, self)
+        self.store_tab = StoreTab(self.tab_widgets["Loja de Itens"], self.personagem_atual, self)
+        self.dice_roller_tab = DiceRollerGenericTab(self.tab_widgets["Rolador de Dados"])
+        self.notes_tab = NotesTab(self.tab_widgets["Notas"], self.personagem_atual, self)
+
+        # Configurar tooltips para as abas
+        for tab_name, tooltip_text in tabs_info.items():
+            tab_button = self.tab_view._segmented_button.find_button_by_text(tab_name)
+            if tab_button:
+                ToolTip(tab_button, tooltip_text)
+
+    def notify_all_tabs(self, update_type: str, data: Dict[str, Any] = None) -> None:
+        """Notifica todas as abas sobre uma mudança nos dados."""
+        tabs_to_update = {
+            'attributes_skills': self.attributes_skills_tab,
+            'combat': self.combat_tab,
+            'magic': self.magic_tab,
+            'inventory': self.inventory_tab,
+            'store': self.store_tab,
+            'notes': self.notes_tab
+        }
+        
+        for tab_name, tab in tabs_to_update.items():
+            if hasattr(tab, 'load_data_from_personagem'):
+                try:
+                    tab.load_data_from_personagem()
+                except Exception as e:
+                    self.log_error("tab_update", f"Erro ao atualizar aba {tab_name}", {
+                        "error": str(e),
+                        "update_type": update_type,
+                        "data": data
+                    })
+
+    def log_error(self, error_type: str, message: str, details: Dict[str, Any] = None) -> None:
+        """Registra erros para debug."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        error_log = {
+            "timestamp": timestamp,
+            "type": error_type,
+            "message": message,
+            "details": details or {}
+        }
+        
+        try:
+            # Salvar em arquivo de log
+            with open("error_log.json", "a", encoding='utf-8') as f:
+                json.dump(error_log, f, ensure_ascii=False)
+                f.write("\n")
+        except Exception as e:
+            print(f"Erro ao salvar log: {e}")
+        
+        # Mostrar feedback ao usuário
+        self.show_feedback_message(f"Erro: {message}", "error", 3000)

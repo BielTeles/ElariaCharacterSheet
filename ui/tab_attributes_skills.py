@@ -2,6 +2,7 @@ import customtkinter as ctk
 import random
 from typing import Dict, Any, Optional
 import tkinter
+from ui.widgets.tooltip import ToolTip
 
 # Definição das cores do tema
 COLORS = {
@@ -194,6 +195,61 @@ class AttributesSkillsTab:
     dice_animation_label: ctk.CTkLabel
     roll_result_label: ctk.CTkLabel
 
+    # Tooltips informativos para atributos
+    attribute_tooltips = {
+        FORCA: "Força (FOR):\n- Determina sua capacidade física\n- Afeta dano corpo-a-corpo\n- Influencia capacidade de carga",
+        DESTREZA: "Destreza (DES):\n- Determina sua agilidade\n- Afeta precisão com armas\n- Influencia esquiva e iniciativa",
+        CONSTITUICAO: "Constituição (CON):\n- Determina sua resistência física\n- Afeta seus Pontos de Vida\n- Influencia recuperação",
+        INTELIGENCIA: "Inteligência (INT):\n- Determina seu conhecimento\n- Afeta magias arcanas\n- Influencia perícias mentais",
+        SABEDORIA: "Sabedoria (SAB):\n- Determina sua percepção\n- Afeta magias divinas\n- Influencia intuição",
+        CARISMA: "Carisma (CAR):\n- Determina sua presença social\n- Afeta interações sociais\n- Influencia liderança"
+    }
+    
+    # Tooltips para pontos
+    points_tooltips = {
+        "pv": "Pontos de Vida (PV):\n- Determina quanto dano você pode receber\n- Recupera com descanso ou cura\n- Quando chega a 0, você cai inconsciente",
+        "pm": "Pontos de Mana (PM):\n- Usado para magias e habilidades especiais\n- Recupera com descanso\n- Necessário para magias e técnicas",
+        "vigor": "Vigor:\n- Usado para ações físicas especiais\n- Recupera com descanso curto\n- Permite usar técnicas especiais"
+    }
+    
+    # Tooltips para perícias
+    skill_tooltips = {
+        "Acrobacia": "Acrobacia (DES):\n- Usada para manobras acrobáticas\n- Ajuda a se equilibrar\n- Útil para escapar",
+        "Adestramento": "Adestramento (CAR):\n- Treinar e controlar animais\n- Cavalgar montarias exóticas\n- Acalmar animais hostis",
+        "Atletismo": "Atletismo (FOR):\n- Correr, nadar e escalar\n- Saltar e se exercitar\n- Proezas físicas gerais",
+        "Atuação": "Atuação (CAR):\n- Performance artística\n- Entreter audiências\n- Disfarces e imitações",
+        "Bloqueio": "Bloqueio (CON):\n- Defender-se com escudo\n- Resistir a impactos\n- Proteger aliados",
+        "Cavalgar": "Cavalgar (DES):\n- Usado para montarias\n- Acalmar animais hostis\n- Ajudar a se mover mais rápido",
+        "Conhecimento (Arcano)": "Conhecimento (Arcano) (INT):\n- Determina seu conhecimento arcano\n- Afeta magias arcanas\n- Influencia perícias arcanas",
+        "Conhecimento (História)": "Conhecimento (História) (INT):\n- Determina seu conhecimento histórico\n- Afeta perícias históricas\n- Influencia investigação",
+        "Conhecimento (Natureza)": "Conhecimento (Natureza) (INT):\n- Determina seu conhecimento natural\n- Afeta perícias naturais\n- Influencia percepção",
+        "Conhecimento (Religião)": "Conhecimento (Religião) (INT):\n- Determina seu conhecimento religioso\n- Afeta perícias religiosas\n- Influencia magias divinas",
+        "Conhecimento (Geografia)": "Conhecimento (Geografia) (INT):\n- Determina seu conhecimento geográfico\n- Afeta perícias geográficas\n- Influencia percepção",
+        "Conhecimento (Reinos)": "Conhecimento (Reinos) (INT):\n- Determina seu conhecimento sobre reinos\n- Afeta perícias de reinos\n- Influencia percepção",
+        "Corpo-a-Corpo": "Corpo-a-Corpo (FOR/DES):\n- Defender-se com armas\n- Resistir a impactos\n- Proteger aliados",
+        "Cura": "Cura (SAB):\n- Usado para curar ferimentos\n- Afeta perícias de cura\n- Influencia percepção",
+        "Diplomacia": "Diplomacia (CAR):\n- Usado para interações sociais\n- Afeta perícias sociais\n- Influencia liderança",
+        "Elemental": "Elemental (INT/SAB):\n- Determina seu conhecimento de elementos\n- Afeta perícias elementais\n- Influencia percepção",
+        "Enganação": "Enganação (CAR):\n- Usado para disfarces e imitações\n- Afeta perícias sociais\n- Influencia percepção",
+        "Esquiva": "Esquiva (DES):\n- Usado para esquivar de ataques\n- Afeta perícias de defesa\n- Influencia percepção",
+        "Fortitude": "Fortitude (CON):\n- Usado para resistir a dano\n- Afeta perícias de resistência\n- Influencia percepção",
+        "Furtividade": "Furtividade (DES):\n- Usado para se mover silenciosamente\n- Afeta perícias de espião\n- Influencia percepção",
+        "Guerra": "Guerra (INT):\n- Determina seu conhecimento de guerra\n- Afeta perícias de guerra\n- Influencia percepção",
+        "Iniciativa": "Iniciativa (DES):\n- Usado para determinar a ordem de turno\n- Afeta perícias de combate\n- Influencia percepção",
+        "Intimidação": "Intimidação (CAR):\n- Usado para intimidar inimigos\n- Afeta perícias sociais\n- Influencia percepção",
+        "Intuição": "Intuição (SAB):\n- Usado para tomar decisões rápidas\n- Afeta perícias de percepção\n- Influencia percepção",
+        "Investigação": "Investigação (INT):\n- Usado para investigar pistas\n- Afeta perícias de investigação\n- Influencia percepção",
+        "Jogatina": "Jogatina (CAR):\n- Usado para entreter audiências\n- Afeta perícias sociais\n- Influencia percepção",
+        "Ladinagem": "Ladinagem (DES):\n- Usado para se mover entre locais\n- Afeta perícias de explorador\n- Influencia percepção",
+        "Misticismo": "Misticismo (INT):\n- Usado para entender rituais\n- Afeta perícias místicas\n- Influencia percepção",
+        "Nobreza": "Nobreza (INT):\n- Usado para se relacionar com nobres\n- Afeta perícias sociais\n- Influencia percepção",
+        "Percepção": "Percepção (SAB):\n- Usado para perceber detalhes\n- Afeta perícias de percepção\n- Influencia percepção",
+        "Pontaria": "Pontaria (DES):\n- Usado para atirar com precisão\n- Afeta perícias de tiro\n- Influencia percepção",
+        "Reflexos": "Reflexos (DES):\n- Usado para se esquivar de ataques\n- Afeta perícias de defesa\n- Influencia percepção",
+        "Sobrevivência": "Sobrevivência (SAB):\n- Usado para sobreviver em ambientes hostis\n- Afeta perícias de sobrevivência\n- Influencia percepção",
+        "Vontade": "Vontade (SAB):\n- Usado para resistir a pressão\n- Afeta perícias de resistência\n- Influencia percepção"
+    }
+
     def __init__(self, tab_widget: ctk.CTkFrame, personagem: Personagem, app_ui_ref: Any):
         self.tab_widget = tab_widget
         self.personagem = personagem
@@ -247,6 +303,9 @@ class AttributesSkillsTab:
 
         # Carrega dados iniciais
         self.load_data_from_personagem()
+
+        # Registra validadores
+        self.register_validators()
 
     def load_data_from_personagem(self) -> None:
         """Carrega os dados do personagem para a UI."""
@@ -641,6 +700,20 @@ class AttributesSkillsTab:
             )
             max_label.grid(row=i, column=3, padx=2, pady=3, sticky="w")
 
+        # Adiciona tooltips aos atributos
+        for attr_name, tooltip in self.attribute_tooltips.items():
+            entry = self.attribute_entries[attr_name + "_val"]
+            ToolTip(entry, tooltip)
+        
+        # Adiciona tooltips aos pontos
+        for point_type, tooltip in self.points_tooltips.items():
+            if point_type == "pv":
+                ToolTip(self.pv_current_entry, tooltip)
+            elif point_type == "pm":
+                ToolTip(self.pm_current_entry, tooltip)
+            elif point_type == "vigor":
+                ToolTip(self.vigor_current_entry, tooltip)
+
     def setup_skills_section(self) -> None:
         """Configura a seção de perícias com visual aprimorado."""
         # Frame principal das perícias
@@ -828,6 +901,12 @@ class AttributesSkillsTab:
             )
             roll_button.grid(row=i, column=4, padx=5, pady=2)
             self.skill_widgets[skill_name + "_roll_button"] = roll_button
+
+        # Adiciona tooltips às perícias
+        for skill_name, tooltip in self.skill_tooltips.items():
+            if skill_name in self.skill_value_entries:
+                entry = self.skill_value_entries[skill_name]
+                ToolTip(entry, tooltip)
 
     def setup_dice_roll_result_display_section(self) -> None:
         """Configura a seção de exibição do resultado da rolagem com visual aprimorado."""
@@ -1113,3 +1192,30 @@ class AttributesSkillsTab:
         except ValueError:
             # Reverte para o valor atual do personagem em caso de entrada inválida
             string_var.set(str(self.personagem.vigor_atuais))
+
+    def validate_numeric_input(self, value: str, min_val: int = 0, max_val: int = 999) -> bool:
+        """Valida entrada numérica."""
+        if not value:
+            return True
+        try:
+            val = int(value)
+            return min_val <= val <= max_val
+        except ValueError:
+            return False
+
+    def register_validators(self):
+        """Registra validadores para campos numéricos."""
+        validate_cmd = (self.tab_widget.register(self.validate_numeric_input), '%P')
+        
+        # Aplica validação aos atributos
+        for entry in self.attribute_entries.values():
+            entry.configure(validate="key", validatecommand=validate_cmd)
+        
+        # Aplica validação aos pontos
+        self.pv_current_entry.configure(validate="key", validatecommand=validate_cmd)
+        self.pm_current_entry.configure(validate="key", validatecommand=validate_cmd)
+        self.vigor_current_entry.configure(validate="key", validatecommand=validate_cmd)
+        
+        # Aplica validação às perícias
+        for entry in self.skill_value_entries.values():
+            entry.configure(validate="key", validatecommand=validate_cmd)
